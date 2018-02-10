@@ -1,4 +1,4 @@
-const VERSION = 1;
+const VERSION = 2;
 const STATIC_CACHE_NAME = 'static_' + VERSION;
 const BASE_URL = location.href.replace(/\/sw\.js$/, '');
 
@@ -13,7 +13,7 @@ self.addEventListener('install', e => {
     // Cache all resources in |STATIC_FILES|.
     let p = caches.open(STATIC_CACHE_NAME).then(cache => {
         return Promise.all(STATIC_FILES.map(url => {
-            return fetch(url).then(res => {
+            return fetch(url, {cache: 'no-cache'}).then(res => {
                 if (!res.ok) {
                     return Promise.reject(`Invalid response. url: ${res.url}, status: ${res.status}`);
                 }

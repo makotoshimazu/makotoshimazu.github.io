@@ -6,30 +6,30 @@
 <body>
   <h1>Random password generator</h1>
   <div class="contents">
+    <h2>Options</h2>
     <div class="control">
-      <h2>Options</h2>
-    <form id="form-params">
-      <div class="card">
-        Length:
-        <label><input type="radio" name="length" value="4">4</label>
-        <label><input type="radio" name="length" value="8">8</label>
-        <label><input type="radio" name="length" value="12">12</label>
-        <label><input type="radio" name="length" value="16" checked>16</label>
-        <label><input type="radio" name="length" value="24">24</label>
-        <label><input type="radio" name="length" value="32">32</label>
-      </div>
-      <div class="card">
-        Type:
-        <label><input type="checkbox" name="numbers" value="true" checked> Numbers</label>
-        <label><input type="checkbox" name="lower_alphabets" value="true" checked> Lower alphabets</label>
-        <label><input type="checkbox" name="upper_alphabets" value="true" checked> Upper alphabets</label>
-        <label><input type="checkbox" name="symbols" value="true"> Symbols</label>
-      </div>
-    </form>
-    <button id="btn-generate">Generate</button>
+      <form id="form-params">
+        <div class="card">
+          Length:
+          <label><input type="radio" name="length" value="4">4</label>
+          <label><input type="radio" name="length" value="8">8</label>
+          <label><input type="radio" name="length" value="12">12</label>
+          <label><input type="radio" name="length" value="16" checked>16</label>
+          <label><input type="radio" name="length" value="24">24</label>
+          <label><input type="radio" name="length" value="32">32</label>
+        </div>
+        <div class="card">
+          Type:
+          <label><input type="checkbox" name="numbers" value="true" checked> Numbers</label>
+          <label><input type="checkbox" name="lower_alphabets" value="true" checked> Lower alphabets</label>
+          <label><input type="checkbox" name="upper_alphabets" value="true" checked> Upper alphabets</label>
+          <label><input type="checkbox" name="symbols" value="true"> Symbols</label>
+        </div>
+      </form>
+      <button id="btn-generate">Generate</button>
     </div>
+    <h2>Passwords</h2>
     <div class="passwords">
-      <h2>Passwords</h2>
     </div>
   </div>
   <script src="app.js" async></script>
