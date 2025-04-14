@@ -22,46 +22,52 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 70vh;
+            height: 65vh; /* 高さを少し調整 */
             user-select: none;
-            /* クリア後もスペースを確保 */
             min-height: clamp(100px, 30vw, 400px);
         }
-        #message {
-             min-height: 2rem; /* メッセージエリアの高さを確保 */
-             white-space: pre-wrap; /* 改行を有効にする */
+        /* 進捗インジケーター */
+        #progress-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem; /* ドット間のスペース (Tailwind gap-3) */
+            margin-bottom: 1rem; /* 下のマージン (Tailwind mb-4) */
+            height: 2rem; /* 高さを確保 */
+        }
+        .progress-dot, .progress-check {
+            font-size: 1.875rem; /* text-3xl */
+            line-height: 1;
+        }
+        .progress-dot {
+            color: #d1d5db; /* gray-300 */
+        }
+        .progress-check {
+            color: #22c55e; /* green-500 */
+            font-weight: bold;
         }
 
-        /* 正解時のアニメーション */
+        #message {
+             min-height: 2rem;
+             white-space: pre-wrap;
+        }
         .correct-typed {
             animation: pop 0.3s ease-out;
         }
         @keyframes pop {
             0% { transform: scale(1); }
-            50% { transform: scale(1.2); color: #22c55e; } /* green-500 */
+            50% { transform: scale(1.2); color: #22c55e; }
             100% { transform: scale(1); }
         }
-
-        /* 間違いポップアップコンテナ */
         #incorrect-popup-container {
-            position: fixed;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            z-index: 10;
-            pointer-events: none;
+            position: fixed; bottom: 10px; left: 50%;
+            transform: translateX(-50%); display: flex;
+            flex-direction: column; align-items: center;
+            z-index: 10; pointer-events: none;
         }
-
-        /* 間違いポップアップ要素 */
         .incorrect-popup {
             @apply bg-red-100 text-red-600 border border-red-400 rounded-md px-3 py-1 text-2xl font-semibold shadow-md mb-2;
             animation: popup-up 1.5s ease-out forwards;
         }
-
-        /* ポップアップアニメーション */
         @keyframes popup-up {
             0% { opacity: 1; transform: translateY(0); }
             80% { opacity: 1; }
@@ -73,7 +79,10 @@
 
     <h1 class="text-2xl md:text-3xl font-bold mb-4 text-gray-700">表示された文字をタイプ！</h1>
 
-    <div id="char-display" class="mb-4">
+    <div id="char-display">
+        </div>
+
+    <div id="progress-indicator">
         </div>
 
     <div id="message" class="text-xl h-auto text-center font-semibold text-gray-600"></div>
@@ -85,74 +94,82 @@
         const charDisplay = document.getElementById('char-display');
         const messageEl = document.getElementById('message');
         const incorrectPopupContainer = document.getElementById('incorrect-popup-container');
+        const progressIndicator = document.getElementById('progress-indicator');
 
         // --- ゲームの状態 ---
         const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let currentTargetChar = '';
-        let correctCount = 0; // 正解数をカウント
-        const maxCorrectCount = 5; // クリアに必要な正解数
-        let gameCleared = false; // ゲームクリアフラグ
+        let correctCount = 0;
+        const maxCorrectCount = 5;
+        let gameCleared = false;
+        let progressDots = [];
+        let waitingForNextChar = false; // ★ 次の文字待ちフラグを追加
 
         // --- サウンドの設定 (Tone.js) ---
         const correctSynth = new Tone.Synth().toDestination();
-        const errorSynth = new Tone.Synth({
-            oscillator: { type: 'square' },
-            envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 }
-        }).toDestination();
+        const errorSynth = new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination();
         errorSynth.volume.value = -6;
-        // クリア音用シンセ
-        const clearSynth = new Tone.Synth({
-             oscillator: { type: 'triangle' }, // 三角波で少し柔らかい音に
-             envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.4 }
-        }).toDestination();
-        clearSynth.volume.value = -3; // 少し音量を上げる
+        const clearSynth = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.4 } }).toDestination();
+        clearSynth.volume.value = -3;
 
-        // Tone.jsのコンテキストを開始するヘルパー関数
         function ensureAudioContext() {
              if (Tone.context.state !== 'running') {
                 Tone.start();
-                // 一度だけクリックリスナーを追加
                 document.body.addEventListener('click', () => Tone.start(), { once: true });
             }
         }
-
-        // 正解音を再生
         function playCorrectSound() {
             ensureAudioContext();
             correctSynth.triggerAttackRelease("G5", "8n", Tone.now());
-        }
-
-        // 不正解音（ブー）を再生
+         }
         function playErrorSound() {
             ensureAudioContext();
             errorSynth.triggerAttackRelease("C3", "8n", Tone.now());
-        }
-
-        // クリア音（テッテテー♪）を再生
+         }
         function playClearSound() {
             ensureAudioContext();
             const now = Tone.now();
-            // 簡単なファンファーレ（ドミソ↑ド）
             clearSynth.triggerAttackRelease("C5", "8n", now);
             clearSynth.triggerAttackRelease("E5", "8n", now + 0.2);
             clearSynth.triggerAttackRelease("G5", "8n", now + 0.4);
-            clearSynth.triggerAttackRelease("C6", "4n", now + 0.6); // 最後の音を少し長く
+            clearSynth.triggerAttackRelease("C6", "4n", now + 0.6);
+         }
+
+        function initializeProgressIndicator() {
+            progressIndicator.innerHTML = '';
+            progressDots = [];
+            for (let i = 0; i < maxCorrectCount; i++) {
+                const dotSpan = document.createElement('span');
+                dotSpan.classList.add('progress-dot');
+                dotSpan.textContent = '●';
+                progressIndicator.appendChild(dotSpan);
+                progressDots.push(dotSpan);
+            }
         }
 
-        // --- 新しい文字を表示 ---
-        function displayNewChar() {
-            // ゲームクリア後は新しい文字を表示しない
-            if (gameCleared) return;
+        function updateProgressIndicator(count) {
+            if (count > 0 && count <= maxCorrectCount) {
+                const index = count - 1;
+                if (progressDots[index]) {
+                    progressDots[index].textContent = '✓';
+                    progressDots[index].classList.remove('progress-dot');
+                    progressDots[index].classList.add('progress-check');
+                }
+            }
+        }
 
+        function displayNewChar() {
+            if (gameCleared) return;
             const randomIndex = Math.floor(Math.random() * characters.length);
             currentTargetChar = characters[randomIndex];
             charDisplay.textContent = currentTargetChar;
             charDisplay.classList.remove('correct-typed');
             void charDisplay.offsetWidth;
-            messageEl.textContent = ''; // メッセージをクリア
+            messageEl.textContent = '';
+            // ★ 新しい文字が表示されたので、入力受付を再開
+            waitingForNextChar = false;
         }
 
-        // --- 間違いポップアップを表示 ---
         function showIncorrectPopup(char) {
             const popup = document.createElement('div');
             popup.classList.add('incorrect-popup');
@@ -164,28 +181,25 @@
                     incorrectPopupContainer.removeChild(popup);
                 }
             }, 1500);
-        }
+         }
 
-        // --- ゲームクリア処理 ---
         function handleGameClear() {
             gameCleared = true;
-            playClearSound(); // クリア音を鳴らす
-            charDisplay.textContent = '🎉'; // 絵文字などでクリア表示
-            charDisplay.classList.remove('correct-typed'); // アニメーションクラスを削除
-            messageEl.textContent = `全クリ おめでとう！ (${maxCorrectCount}回成功)\nリロードしてもう一度プレイ`; // クリアメッセージ
+            playClearSound();
+            charDisplay.textContent = '🎉';
+            charDisplay.classList.remove('correct-typed');
+            messageEl.textContent = `全クリ おめでとう！ (${maxCorrectCount}回成功)\nリロードしてもう一度プレイ`;
+            // ★ クリア後も入力受付は停止したままにするのでフラグは変更しない
+            // waitingForNextChar = false; // 不要
         }
 
         // --- キー入力処理 ---
         function handleKeyPress(event) {
-            // ゲームクリア後は何もしない
-            if (gameCleared) {
+            // ★ ゲームクリア後、または次の文字待ちの間は処理しない
+            if (gameCleared || waitingForNextChar) {
                 return;
             }
-
-            // 修飾キーや特殊キーは無視
-            if (event.key.length > 1 || event.metaKey || event.ctrlKey || event.altKey) {
-                return;
-            }
+            if (event.key.length > 1 || event.metaKey || event.ctrlKey || event.altKey) return;
 
             const pressedKey = event.key.toUpperCase();
 
@@ -194,18 +208,20 @@
                 playCorrectSound();
                 messageEl.textContent = 'OK!';
                 charDisplay.classList.add('correct-typed');
-                correctCount++; // 正解数を増やす
+                correctCount++;
+                updateProgressIndicator(correctCount);
 
-                // クリア条件をチェック
+                // ★ 正解したので、次の文字が表示されるまで入力を無効化
+                waitingForNextChar = true;
+
                 if (correctCount >= maxCorrectCount) {
                     // --- ゲームクリア ---
-                    setTimeout(handleGameClear, 300); // 少し待ってからクリア処理
+                    // waitingForNextChar は true のままクリア処理へ
+                    setTimeout(handleGameClear, 300);
                 } else {
                     // --- 次の文字へ ---
-                    // 正解メッセージ表示後、次の文字を表示
-                    setTimeout(() => {
-                         displayNewChar();
-                    }, 300); // 0.3秒後
+                    // waitingForNextChar は displayNewChar の中で false に戻される
+                    setTimeout(displayNewChar, 300);
                 }
 
             } else {
@@ -213,6 +229,7 @@
                 playErrorSound();
                 messageEl.textContent = '違うよ！';
                 showIncorrectPopup(pressedKey);
+                // 不正解の場合は次の文字待ち状態にはしない
             }
         }
 
@@ -220,7 +237,8 @@
         window.addEventListener('keydown', handleKeyPress);
 
         // --- 初期化 ---
-        displayNewChar(); // 最初の文字を表示
+        initializeProgressIndicator();
+        displayNewChar();
         document.body.focus();
         document.body.addEventListener('click', () => {
             document.body.focus();
