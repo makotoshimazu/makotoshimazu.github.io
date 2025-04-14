@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプルタイピングゲーム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* スクロールバーを隠す */
+            position: relative; /* ポップアップコンテナの基準点 */
+            min-height: 100vh;
+        }
+        #char-display {
+            font-size: clamp(100px, 30vw, 400px);
+            line-height: 1;
+            font-weight: 900;
+            color: #3b82f6; /* blue-500 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 70vh;
+            user-select: none;
+        }
+        #message {
+             min-height: 2rem;
+        }
+
+        /* 正解時のアニメーション */
+        .correct-typed {
+            animation: pop 0.3s ease-out;
+        }
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); color: #22c55e; } /* green-500 */
+            100% { transform: scale(1); }
+        }
+
+        /* 間違いポップアップコンテナ */
+        #incorrect-popup-container {
+            position: fixed; /* 画面下部に固定 */
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column; /* 縦に並べる */
+            align-items: center;
+            z-index: 10; /* 他の要素より手前に */
+            pointer-events: none; /* クリック等のイベントを無視 */
+        }
+
+        /* 間違いポップアップ要素 */
+        .incorrect-popup {
+            @apply bg-red-100 text-red-600 border border-red-400 rounded-md px-3 py-1 text-2xl font-semibold shadow-md mb-2; /* Tailwindでスタイル */
+            animation: popup-up 1.5s ease-out forwards; /* アニメーションを適用 */
+        }
+
+        /* ポップアップアニメーション */
+        @keyframes popup-up {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            80% {
+                 opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-80px); /* 上に移動して消える */
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4" tabindex="0">
+
+    <h1 class="text-2xl md:text-3xl font-bold mb-4 text-gray-700">表示された文字をタイプ！</h1>
+
+    <div id="char-display" class="mb-4">
+        </div>
+
+    <div id="message" class="text-xl h-8 text-center font-semibold text-gray-600"></div>
+
+    <div id="incorrect-popup-container"></div>
+
+    <script>
+        // --- 要素の取得 ---
+        const charDisplay = document.getElementById('char-display');
+        const messageEl = document.getElementById('message');
+        const incorrectPopupContainer = document.getElementById('incorrect-popup-container');
+
+        // --- ゲームの状態 ---
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let currentTargetChar = '';
+
+        // --- サウンドの設定 (Tone.js) ---
+        // 正解音用シンセ
+        const correctSynth = new Tone.Synth().toDestination();
+        // 不正解音用シンセ（少し低い音、または違う音色）
+        const errorSynth = new Tone.Synth({
+            oscillator: { type: 'square' }, // 波形を四角波に
+            envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 }
+        }).toDestination();
+        errorSynth.volume.value = -6; // 少し音量を下げる
+
+        // 正解音を再生
+        function playCorrectSound() {
+            if (Tone.context.state !== 'running') {
+                Tone.start();
+                document.body.addEventListener('click', () => Tone.start(), { once: true });
+            }
+            correctSynth.triggerAttackRelease("G5", "8n", Tone.now());
+        }
+
+        // 不正解音（ブー）を再生
+        function playErrorSound() {
+             if (Tone.context.state !== 'running') { 
+                Tone.start();
+                document.body.addEventListener('click', () => Tone.start(), { once: true });
+            }
+            // 低い 'C3' の音を鳴らす
+            errorSynth.triggerAttackRelease("C3", "8n", Tone.now());
+        }
+
+        // --- 新しい文字を表示 ---
+        function displayNewChar() {
+            const randomIndex = Math.floor(Math.random() * characters.length);
+            currentTargetChar = characters[randomIndex];
+            charDisplay.textContent = currentTargetChar;
+            charDisplay.classList.remove('correct-typed');
+            void charDisplay.offsetWidth;
+            messageEl.textContent = '';
+        }
+
+        // --- 間違いポップアップを表示 ---
+        function showIncorrectPopup(char) {
+            const popup = document.createElement('div');
+            popup.classList.add('incorrect-popup');
+            popup.textContent = char; // 間違った文字を表示
+            incorrectPopupContainer.appendChild(popup);
+
+            // アニメーション終了後に要素を削除
+            setTimeout(() => {
+                // コンテナ内に要素が存在すれば削除
+                if (incorrectPopupContainer.contains(popup)) {
+                    incorrectPopupContainer.removeChild(popup);
+                }
+            }, 1500); // アニメーション時間（1.5秒）に合わせる
+        }
+
+        // --- キー入力処理 ---
+        function handleKeyPress(event) {
+            // 修飾キー（Shift, Ctrlなど）や特殊キーは無視
+            if (event.key.length > 1 || event.metaKey || event.ctrlKey || event.altKey) {
+                return;
+            }
+
+            const pressedKey = event.key.toUpperCase();
+
+            if (pressedKey === currentTargetChar) {
+                // --- 正解 ---
+                playCorrectSound();
+                messageEl.textContent = 'OK!';
+                charDisplay.classList.add('correct-typed');
+
+                setTimeout(() => {
+                    displayNewChar();
+                }, 300);
+
+            } else {
+                // --- 不正解 ---
+                playErrorSound(); // ブー音を鳴らす
+                messageEl.textContent = '違うよ！';
+                showIncorrectPopup(pressedKey); // 間違った文字をポップアップ表示
+            }
+        }
+
+        // --- イベントリスナーの設定 ---
+        window.addEventListener('keydown', handleKeyPress);
+
+        // --- 初期化 ---
+        displayNewChar();
+        document.body.focus();
+        document.body.addEventListener('click', () => {
+            document.body.focus();
+        });
+
+    </script>
+
+</body>
+</html>
