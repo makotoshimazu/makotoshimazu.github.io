@@ -10,8 +10,8 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            overflow: hidden; /* スクロールバーを隠す */
-            position: relative; /* ポップアップコンテナの基準点 */
+            overflow: hidden;
+            position: relative;
             min-height: 100vh;
         }
         #char-display {
@@ -24,9 +24,12 @@
             align-items: center;
             height: 70vh;
             user-select: none;
+            /* クリア後もスペースを確保 */
+            min-height: clamp(100px, 30vw, 400px);
         }
         #message {
-             min-height: 2rem;
+             min-height: 2rem; /* メッセージエリアの高さを確保 */
+             white-space: pre-wrap; /* 改行を有効にする */
         }
 
         /* 正解時のアニメーション */
@@ -41,36 +44,28 @@
 
         /* 間違いポップアップコンテナ */
         #incorrect-popup-container {
-            position: fixed; /* 画面下部に固定 */
+            position: fixed;
             bottom: 10px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            flex-direction: column; /* 縦に並べる */
+            flex-direction: column;
             align-items: center;
-            z-index: 10; /* 他の要素より手前に */
-            pointer-events: none; /* クリック等のイベントを無視 */
+            z-index: 10;
+            pointer-events: none;
         }
 
         /* 間違いポップアップ要素 */
         .incorrect-popup {
-            @apply bg-red-100 text-red-600 border border-red-400 rounded-md px-3 py-1 text-2xl font-semibold shadow-md mb-2; /* Tailwindでスタイル */
-            animation: popup-up 1.5s ease-out forwards; /* アニメーションを適用 */
+            @apply bg-red-100 text-red-600 border border-red-400 rounded-md px-3 py-1 text-2xl font-semibold shadow-md mb-2;
+            animation: popup-up 1.5s ease-out forwards;
         }
 
         /* ポップアップアニメーション */
         @keyframes popup-up {
-            0% {
-                opacity: 1;
-                transform: translateY(0);
-            }
-            80% {
-                 opacity: 1;
-            }
-            100% {
-                opacity: 0;
-                transform: translateY(-80px); /* 上に移動して消える */
-            }
+            0% { opacity: 1; transform: translateY(0); }
+            80% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-80px); }
         }
     </style>
 </head>
@@ -81,7 +76,7 @@
     <div id="char-display" class="mb-4">
         </div>
 
-    <div id="message" class="text-xl h-8 text-center font-semibold text-gray-600"></div>
+    <div id="message" class="text-xl h-auto text-center font-semibold text-gray-600"></div>
 
     <div id="incorrect-popup-container"></div>
 
@@ -94,65 +89,100 @@
         // --- ゲームの状態 ---
         const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let currentTargetChar = '';
+        let correctCount = 0; // 正解数をカウント
+        const maxCorrectCount = 5; // クリアに必要な正解数
+        let gameCleared = false; // ゲームクリアフラグ
 
         // --- サウンドの設定 (Tone.js) ---
-        // 正解音用シンセ
         const correctSynth = new Tone.Synth().toDestination();
-        // 不正解音用シンセ（少し低い音、または違う音色）
         const errorSynth = new Tone.Synth({
-            oscillator: { type: 'square' }, // 波形を四角波に
+            oscillator: { type: 'square' },
             envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 }
         }).toDestination();
-        errorSynth.volume.value = -6; // 少し音量を下げる
+        errorSynth.volume.value = -6;
+        // クリア音用シンセ
+        const clearSynth = new Tone.Synth({
+             oscillator: { type: 'triangle' }, // 三角波で少し柔らかい音に
+             envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.4 }
+        }).toDestination();
+        clearSynth.volume.value = -3; // 少し音量を上げる
+
+        // Tone.jsのコンテキストを開始するヘルパー関数
+        function ensureAudioContext() {
+             if (Tone.context.state !== 'running') {
+                Tone.start();
+                // 一度だけクリックリスナーを追加
+                document.body.addEventListener('click', () => Tone.start(), { once: true });
+            }
+        }
 
         // 正解音を再生
         function playCorrectSound() {
-            if (Tone.context.state !== 'running') {
-                Tone.start();
-                document.body.addEventListener('click', () => Tone.start(), { once: true });
-            }
+            ensureAudioContext();
             correctSynth.triggerAttackRelease("G5", "8n", Tone.now());
         }
 
         // 不正解音（ブー）を再生
         function playErrorSound() {
-             if (Tone.context.state !== 'running') { 
-                Tone.start();
-                document.body.addEventListener('click', () => Tone.start(), { once: true });
-            }
-            // 低い 'C3' の音を鳴らす
+            ensureAudioContext();
             errorSynth.triggerAttackRelease("C3", "8n", Tone.now());
+        }
+
+        // クリア音（テッテテー♪）を再生
+        function playClearSound() {
+            ensureAudioContext();
+            const now = Tone.now();
+            // 簡単なファンファーレ（ドミソ↑ド）
+            clearSynth.triggerAttackRelease("C5", "8n", now);
+            clearSynth.triggerAttackRelease("E5", "8n", now + 0.2);
+            clearSynth.triggerAttackRelease("G5", "8n", now + 0.4);
+            clearSynth.triggerAttackRelease("C6", "4n", now + 0.6); // 最後の音を少し長く
         }
 
         // --- 新しい文字を表示 ---
         function displayNewChar() {
+            // ゲームクリア後は新しい文字を表示しない
+            if (gameCleared) return;
+
             const randomIndex = Math.floor(Math.random() * characters.length);
             currentTargetChar = characters[randomIndex];
             charDisplay.textContent = currentTargetChar;
             charDisplay.classList.remove('correct-typed');
             void charDisplay.offsetWidth;
-            messageEl.textContent = '';
+            messageEl.textContent = ''; // メッセージをクリア
         }
 
         // --- 間違いポップアップを表示 ---
         function showIncorrectPopup(char) {
             const popup = document.createElement('div');
             popup.classList.add('incorrect-popup');
-            popup.textContent = char; // 間違った文字を表示
+            popup.textContent = char;
             incorrectPopupContainer.appendChild(popup);
 
-            // アニメーション終了後に要素を削除
             setTimeout(() => {
-                // コンテナ内に要素が存在すれば削除
                 if (incorrectPopupContainer.contains(popup)) {
                     incorrectPopupContainer.removeChild(popup);
                 }
-            }, 1500); // アニメーション時間（1.5秒）に合わせる
+            }, 1500);
+        }
+
+        // --- ゲームクリア処理 ---
+        function handleGameClear() {
+            gameCleared = true;
+            playClearSound(); // クリア音を鳴らす
+            charDisplay.textContent = '🎉'; // 絵文字などでクリア表示
+            charDisplay.classList.remove('correct-typed'); // アニメーションクラスを削除
+            messageEl.textContent = `全クリ おめでとう！ (${maxCorrectCount}回成功)\nリロードしてもう一度プレイ`; // クリアメッセージ
         }
 
         // --- キー入力処理 ---
         function handleKeyPress(event) {
-            // 修飾キー（Shift, Ctrlなど）や特殊キーは無視
+            // ゲームクリア後は何もしない
+            if (gameCleared) {
+                return;
+            }
+
+            // 修飾キーや特殊キーは無視
             if (event.key.length > 1 || event.metaKey || event.ctrlKey || event.altKey) {
                 return;
             }
@@ -164,16 +194,25 @@
                 playCorrectSound();
                 messageEl.textContent = 'OK!';
                 charDisplay.classList.add('correct-typed');
+                correctCount++; // 正解数を増やす
 
-                setTimeout(() => {
-                    displayNewChar();
-                }, 300);
+                // クリア条件をチェック
+                if (correctCount >= maxCorrectCount) {
+                    // --- ゲームクリア ---
+                    setTimeout(handleGameClear, 300); // 少し待ってからクリア処理
+                } else {
+                    // --- 次の文字へ ---
+                    // 正解メッセージ表示後、次の文字を表示
+                    setTimeout(() => {
+                         displayNewChar();
+                    }, 300); // 0.3秒後
+                }
 
             } else {
                 // --- 不正解 ---
-                playErrorSound(); // ブー音を鳴らす
+                playErrorSound();
                 messageEl.textContent = '違うよ！';
-                showIncorrectPopup(pressedKey); // 間違った文字をポップアップ表示
+                showIncorrectPopup(pressedKey);
             }
         }
 
@@ -181,7 +220,7 @@
         window.addEventListener('keydown', handleKeyPress);
 
         // --- 初期化 ---
-        displayNewChar();
+        displayNewChar(); // 最初の文字を表示
         document.body.focus();
         document.body.addEventListener('click', () => {
             document.body.focus();
