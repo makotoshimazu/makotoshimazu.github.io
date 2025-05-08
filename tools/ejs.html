@@ -64,7 +64,7 @@
             border-bottom: 1px solid #e5e7eb;
         }
 
-        textarea, pre { /* General textarea styling */
+        textarea, pre {
             width: 100%;
             flex-grow: 1;
             box-sizing: border-box;
@@ -74,21 +74,18 @@
             font-size: 0.875rem;
             line-height: 1.5;
             background-color: transparent;
-            /* resize: none; by default for template editor, but variable textarea might need it or auto-resize */
         }
 
-        pre { /* Preview specific styling */
+        pre {
             white-space: pre-wrap;
             word-wrap: break-word;
-            background-color: #f9fafb; /* Light gray for preview background */
+            background-color: #f9fafb;
             overflow-y: auto;
         }
 
-        /* Editor textarea specific */
         #ejsTemplate {
             resize: none;
         }
-
 
         button, select, input[type="text"], input[type="number"], input[type="checkbox"] {
             padding: 0.5rem 0.75rem;
@@ -104,7 +101,6 @@
             width: auto;
             margin-right: 0.5rem;
         }
-
 
         button:hover, select:hover, input[type="text"]:hover {
             border-color: #9ca3af;
@@ -180,7 +176,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Variable Form Styles */
         #variablesFormContainer {
             padding: 0.75rem;
             overflow-y: auto;
@@ -189,44 +184,76 @@
         .variable-row {
             display: flex;
             gap: 0.5rem;
-            align-items: flex-start; /* Align items to the start for textarea */
-            margin-bottom: 0.75rem; /* Increased margin slightly */
-            padding: 0.75rem; /* Increased padding slightly */
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+            padding: 0.75rem;
             border: 1px solid #e5e7eb;
             border-radius: 0.375rem;
         }
-        .variable-row input[type="text"], .variable-row textarea { /* Common styling for key input and value textarea */
-            border: 1px solid #d1d5db; /* Add border like other inputs */
+        .variable-row input[type="text"], .variable-row textarea {
+            border: 1px solid #d1d5db;
             border-radius: 0.375rem;
             padding: 0.5rem 0.75rem;
             font-size: 0.875rem;
-            font-family: monospace; /* Keep monospace for consistency */
-            box-sizing: border-box; /* Ensure padding doesn't expand element */
+            font-family: monospace;
+            box-sizing: border-box;
         }
-
         .variable-row input[type="text"].key-input {
              min-width: 100px;
-             flex-grow: 0.5; /* Give less grow factor to key */
-             height: 38px; /* Match typical input height */
+             flex-grow: 0.5;
+             height: 38px;
         }
         .variable-row textarea.value-input {
             min-width: 150px;
-            flex-grow: 1.5; /* Give more grow factor to value */
-            min-height: 38px; /* Minimum height similar to a text input */
-            resize: vertical; /* Allow vertical resize by user */
-            line-height: 1.4; /* Adjust line height for textarea */
+            flex-grow: 1.5;
+            min-height: 38px;
+            resize: vertical;
+            line-height: 1.4;
         }
         .variable-row button.delete-variable {
-            padding: 0.5rem 0.75rem; /* Match other button padding */
+            padding: 0.5rem 0.75rem;
             background-color: #ef4444;
             color: white;
             border: none;
-            border-radius: 0.375rem; /* Rounded corners */
-            height: 38px; /* Match typical input height */
-            align-self: center; /* Center button if textarea grows tall */
+            border-radius: 0.375rem;
+            height: 38px;
+            align-self: center;
         }
          .variable-row button.delete-variable:hover {
             background-color: #dc2626;
+        }
+
+        /* Dialog Styles */
+        dialog#duplicateDialog {
+            border: 1px solid #ccc;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            min-width: 300px;
+            max-width: 90vw;
+        }
+        dialog#duplicateDialog::backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        dialog#duplicateDialog h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+        dialog#duplicateDialog p {
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #4b5563;
+        }
+        dialog#duplicateDialog input[type="text"] {
+            width: 100%;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+        }
+        dialog#duplicateDialog .dialog-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
         }
 
 
@@ -235,10 +262,10 @@
             .left-pane, .right-pane { width: 100%; height: auto; }
             .left-pane { border-right: none; border-bottom: 1px solid #e5e7eb; }
             .editor-section, .preview-section, .variables-section { min-height: 250px; }
-            textarea, pre { height: 200px; } /* General height for main textareas */
+            textarea, pre { height: 200px; }
             #variablesFormContainer { max-height: 300px; }
             .variable-row textarea.value-input {
-                 min-height: 60px; /* Slightly taller on mobile */
+                 min-height: 60px;
             }
         }
     </style>
@@ -287,12 +314,22 @@
 
     <div id="notificationArea"></div>
 
+    <dialog id="duplicateDialog">
+        <h3>テンプレートを複製</h3>
+        <p>新しいテンプレート名を入力してください:</p>
+        <input type="text" id="newTemplateNameInput" placeholder="新しいテンプレート名">
+        <div class="dialog-actions">
+            <button id="cancelDuplicateButton">キャンセル</button>
+            <button id="confirmDuplicateButton" class="primary">複製して保存</button>
+        </div>
+    </dialog>
+
     <script>
         // DOM要素の取得
         const ejsTemplateInput = document.getElementById('ejsTemplate');
         const previewOutput = document.getElementById('previewOutput');
         const copyButton = document.getElementById('copyButton');
-        const templateNameInput = document.getElementById('templateName');
+        const templateNameInput = document.getElementById('templateName'); // Global template name input
         const saveTemplateButton = document.getElementById('saveTemplateButton');
         const templateListSelect = document.getElementById('templateList');
         const loadTemplateButton = document.getElementById('loadTemplateButton');
@@ -303,8 +340,15 @@
         const addVariableButton = document.getElementById('addVariableButton');
         const variablesJsonDebug = document.getElementById('variablesJsonDebug');
 
+        // Dialog elements
+        const duplicateDialog = document.getElementById('duplicateDialog');
+        const newTemplateNameInput = document.getElementById('newTemplateNameInput'); // Input inside dialog
+        const confirmDuplicateButton = document.getElementById('confirmDuplicateButton');
+        const cancelDuplicateButton = document.getElementById('cancelDuplicateButton');
+
+
         let db;
-        const DB_NAME = 'EjsTemplateDB_v4'; // Textarea for value, version up
+        const DB_NAME = 'EjsTemplateDB_v5'; // Dialog for duplicate, version up
         const STORE_NAME = 'templates';
         let currentTemplateId = null;
 
@@ -348,9 +392,9 @@
             const rows = variablesFormContainer.querySelectorAll('.variable-row');
             rows.forEach(row => {
                 const keyInput = row.querySelector('.key-input');
-                const valueInput = row.querySelector('.value-input'); // Now a textarea
+                const valueInput = row.querySelector('.value-input');
                 const key = keyInput.value.trim();
-                const value = valueInput.value; // Value from textarea
+                const value = valueInput.value;
 
                 if (key) {
                     const keys = key.split('.');
@@ -402,11 +446,6 @@
             }
         }
 
-        /**
-         * 変数入力行をフォームに追加する。
-         * @param {string} key - 初期キー (省略可)
-         * @param {string} value - 初期値 (省略可)
-         */
         function addVariableRow(key = "", value = "") {
             const row = document.createElement('div');
             row.className = 'variable-row';
@@ -417,26 +456,21 @@
             keyInput.placeholder = 'キー (例: title)';
             keyInput.value = key;
 
-            // Value input is now a textarea
             const valueInput = document.createElement('textarea');
             valueInput.className = 'value-input';
             valueInput.placeholder = '値 (例: こんにちは世界)';
             valueInput.value = value;
-            // valueInput.rows = 1; // Start with a single row, CSS will handle min-height and resize
 
-            // Auto-resize textarea height based on content
             function autoResizeTextarea(textarea) {
-                textarea.style.height = 'auto'; // Reset height
-                textarea.style.height = textarea.scrollHeight + 'px'; // Set to scroll height
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
             }
 
             valueInput.addEventListener('input', () => {
-                autoResizeTextarea(valueInput); // Auto-resize on input
+                autoResizeTextarea(valueInput);
                 renderPreview();
                 debouncedAutoSave();
             });
-            // Initial resize if there's pre-filled content
-            // setTimeout(() => autoResizeTextarea(valueInput), 0); // Call after element is in DOM and rendered
 
             const deleteBtn = document.createElement('button');
             deleteBtn.textContent = '削除';
@@ -455,19 +489,15 @@
             row.appendChild(deleteBtn);
             variablesFormContainer.appendChild(row);
             
-            // Trigger auto-resize after the element is added to the DOM and has dimensions
-            // This ensures scrollHeight is calculated correctly.
             requestAnimationFrame(() => {
                  autoResizeTextarea(valueInput);
             });
-
 
             keyInput.addEventListener('input', () => {
                 renderPreview();
                 debouncedAutoSave();
             });
         }
-
 
         // 2. プレビュー更新
         function renderPreview() {
@@ -485,10 +515,11 @@
 
         // 3. テンプレート保存
         async function saveCurrentTemplate(isNew = false) {
+            // The name is now taken from the global templateNameInput for consistency
             const name = templateNameInput.value.trim();
             if (!name) {
                 showNotification("テンプレート名を入力してください。", "error");
-                return null;
+                return null; // Return null or throw error to indicate failure
             }
             const templateContent = ejsTemplateInput.value;
             const variablesJsonString = JSON.stringify(buildJsonFromForm());
@@ -500,7 +531,7 @@
             const transaction = db.transaction([STORE_NAME], 'readwrite');
             const objectStore = transaction.objectStore(STORE_NAME);
             const templateData = {
-                name: name,
+                name: name, // Use the name from the global input
                 template: templateContent,
                 variables: variablesJsonString,
                 lastModified: new Date()
@@ -517,13 +548,13 @@
             return new Promise((resolve, reject) => {
                 request.onsuccess = (event) => {
                     const savedId = event.target.result;
-                    if (!currentTemplateId || isNew) {
+                    if (!currentTemplateId || isNew) { // If it was a new save (or duplication)
                         currentTemplateId = savedId;
-                        templateNameInput.value = name;
+                        // templateNameInput.value is already set before calling this for duplication
                     }
                     console.log("Template saved/updated. ID:", currentTemplateId);
                     showNotification(`テンプレート「${name}」を保存しました。`, "success");
-                    loadTemplateList();
+                    loadTemplateList(); // Refresh list and select the newly saved/duplicated item
                     resolve(currentTemplateId);
                 };
                 request.onerror = (event) => {
@@ -542,6 +573,8 @@
             const request = objectStore.getAll();
             request.onsuccess = (event) => {
                 const templates = event.target.result;
+                const previousSelectedValue = templateListSelect.value; // Preserve selection if possible
+
                 templateListSelect.innerHTML = '<option value="">--- 新規テンプレート ---</option>';
                 templates.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
                 templates.forEach(template => {
@@ -550,10 +583,17 @@
                     option.textContent = template.name || `ID: ${template.id}`;
                     templateListSelect.appendChild(option);
                 });
-                if (currentTemplateId) {
+
+                // Try to re-select current or previously selected if still exists
+                if (currentTemplateId && templates.some(t => t.id === currentTemplateId)) {
                     templateListSelect.value = currentTemplateId;
-                } else {
-                    templateListSelect.value = "";
+                } else if (previousSelectedValue && templates.some(t => t.id === parseInt(previousSelectedValue))) {
+                    templateListSelect.value = previousSelectedValue;
+                } else if (templates.length > 0 && !currentTemplateId) { // If currentId was cleared (e.g. after delete) select first
+                    // templateListSelect.value = templates[0].id; // Optionally select the first one
+                    // loadSelectedTemplate(); // And load it
+                } else if (!currentTemplateId) {
+                     templateListSelect.value = ""; // Default to "新規"
                 }
             };
             request.onerror = (event) => {
@@ -565,9 +605,9 @@
         // 5. 選択テンプレート読み込み
         async function loadSelectedTemplate() {
             const selectedIdStr = templateListSelect.value;
-            if (!selectedIdStr) {
+            if (!selectedIdStr) { // "--- 新規テンプレート ---" selected
                 currentTemplateId = null;
-                templateNameInput.value = "";
+                templateNameInput.value = ""; // Clear global name input
                 ejsTemplateInput.value = "";
                 populateFormFromJson("");
                 renderPreview();
@@ -585,7 +625,7 @@
                 const template = event.target.result;
                 if (template) {
                     currentTemplateId = template.id;
-                    templateNameInput.value = template.name || "";
+                    templateNameInput.value = template.name || ""; // Set global name input
                     ejsTemplateInput.value = template.template || "";
                     populateFormFromJson(template.variables || "");
                     renderPreview();
@@ -594,6 +634,7 @@
                 } else {
                     showNotification("テンプレートが見つかりません。", "error");
                     currentTemplateId = null;
+                    templateNameInput.value = ""; // Clear if not found
                 }
             };
             request.onerror = (event) => {
@@ -602,7 +643,7 @@
             };
         }
 
-        // 6. テンプレート複製
+        // 6. テンプレート複製 (Dialog implementation)
         async function duplicateSelectedTemplate() {
             const selectedIdStr = templateListSelect.value;
             if (!selectedIdStr) {
@@ -618,20 +659,17 @@
             request.onsuccess = async (event) => {
                 const originalTemplate = event.target.result;
                 if (originalTemplate) {
-                    const newName = prompt("新しいテンプレート名を入力してください:", `${originalTemplate.name} (コピー)`);
-                    if (newName && newName.trim() !== "") {
-                        templateNameInput.value = newName.trim();
-                        ejsTemplateInput.value = originalTemplate.template;
-                        populateFormFromJson(originalTemplate.variables);
-                        currentTemplateId = null;
-                        try {
-                           await saveCurrentTemplate(true);
-                        } catch (error) { /* handled by saveCurrentTemplate */ }
-                    } else if (newName !== null) {
-                        showNotification("テンプレート名は空にできません。", "info");
-                    }
+                    // Populate main form with data from the template to be duplicated
+                    ejsTemplateInput.value = originalTemplate.template || "";
+                    populateFormFromJson(originalTemplate.variables || "");
+                    // No need to set templateNameInput here, it will be set from dialog
+
+                    newTemplateNameInput.value = `${originalTemplate.name || "テンプレート"} (コピー)`;
+                    duplicateDialog.showModal();
+                    newTemplateNameInput.focus();
+                    newTemplateNameInput.select();
                 } else {
-                    showNotification("複製元のテンプレートが見つかりません。", "error");
+                    showNotification("複製元のテンプレートが見つかりませんでした。", "error");
                 }
             };
             request.onerror = (event) => {
@@ -639,6 +677,42 @@
                 showNotification("複製元取得失敗。", "error");
             };
         }
+
+        // Event listener for the confirm button in the duplicate dialog
+        confirmDuplicateButton.addEventListener('click', async () => {
+            const newName = newTemplateNameInput.value.trim();
+            if (!newName) {
+                showNotification("新しいテンプレート名を入力してください。", "error");
+                newTemplateNameInput.focus();
+                return;
+            }
+
+            // Set the global template name input, which saveCurrentTemplate will use
+            templateNameInput.value = newName;
+            currentTemplateId = null; // Ensure it's saved as a new template
+
+            try {
+                const newId = await saveCurrentTemplate(true); // isNew = true for duplication
+                if (newId) { // If save was successful
+                    duplicateDialog.close();
+                    // loadTemplateList will be called by saveCurrentTemplate, which should select the new item.
+                }
+                // If saveCurrentTemplate fails, it shows a notification, so no extra error handling here.
+            } catch (error) {
+                // Error already handled by saveCurrentTemplate's notification
+                console.error("Error during duplication save:", error);
+            }
+        });
+
+        // Event listener for the cancel button in the duplicate dialog
+        cancelDuplicateButton.addEventListener('click', () => {
+            duplicateDialog.close();
+        });
+        // Close dialog on ESC key (default behavior for <dialog>)
+        duplicateDialog.addEventListener('close', () => {
+            newTemplateNameInput.value = ''; // Clear input on close
+        });
+
 
         // 7. テンプレート削除
         async function deleteSelectedTemplate() {
@@ -702,11 +776,21 @@
 
         addVariableButton.addEventListener('click', () => {
             addVariableRow();
-            renderPreview(); // Update preview immediately after adding a row
+            renderPreview();
         });
 
-        saveTemplateButton.addEventListener('click', async () => { await saveCurrentTemplate(); });
+        saveTemplateButton.addEventListener('click', async () => {
+            // If currentTemplateId is null, it means we are trying to save a "new" template.
+            // Check if a name is provided.
+            if (!currentTemplateId && !templateNameInput.value.trim()) {
+                 showNotification("新しいテンプレートには名前が必要です。「テンプレート名」を入力して保存してください。", "info");
+                 templateNameInput.focus();
+                 return;
+            }
+            await saveCurrentTemplate(currentTemplateId === null); // Pass true for isNew if no current ID
+        });
         loadTemplateButton.addEventListener('click', loadSelectedTemplate);
+        // duplicateTemplateButton's main logic is now in its own function, event listener remains
         duplicateTemplateButton.addEventListener('click', duplicateSelectedTemplate);
         deleteTemplateButton.addEventListener('click', deleteSelectedTemplate);
         templateListSelect.addEventListener('change', loadSelectedTemplate);
@@ -716,18 +800,17 @@
         function debouncedAutoSave() {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(async () => {
-                if (currentTemplateId && templateNameInput.value.trim() !== "") {
+                if (currentTemplateId && templateNameInput.value.trim() !== "") { // Only auto-save existing, named templates
                     console.log("Auto-saving template...");
-                    await saveCurrentTemplate();
+                    await saveCurrentTemplate(false); // isNew is false for auto-save
                 }
             }, 2500);
         }
 
         ejsTemplateInput.addEventListener('input', debouncedAutoSave);
-        templateNameInput.addEventListener('input', () => {
+        templateNameInput.addEventListener('input', () => { // Auto-save on name change for existing template
             if (currentTemplateId) { debouncedAutoSave(); }
         });
-        // Note: debouncedAutoSave for variable inputs is handled within addVariableRow's event listeners.
 
         // 11. 初期化処理
         window.onload = async () => {
@@ -735,10 +818,10 @@
                 await initDB();
                 loadTemplateList();
                 if (!templateListSelect.value) {
-                    addVariableRow("exampleKey", "exampleValue\nwith multiple lines."); // Sample with multi-line
+                    addVariableRow("exampleKey", "exampleValue\nwith multiple lines.");
                 }
                 renderPreview();
-                showNotification("EJSテスター (値は複数行入力対応)", "info", 5000);
+                showNotification("EJSテスター (複製ダイアログ対応)", "info", 5000);
             } catch (error) {
                 console.error("Initialization failed:", error);
                 showNotification("初期化失敗。", "error", 10000);
