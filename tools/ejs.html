@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EJS テンプレートテスター</title>
     <script src="https://cdn.jsdelivr.net/npm/ejs@3.1.6/ejs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -123,12 +122,21 @@
         }
 
         button.secondary {
-            background-color: #6b7280; /* Tailwind gray-500 */
+            background-color: #6b7280; 
             color: #ffffff;
         }
         button.secondary:hover {
-            background-color: #4b5563; /* Tailwind gray-600 */
+            background-color: #4b5563; 
         }
+        
+        button.file-ops { /* Style for file operation buttons */
+            background-color: #10b981; /* Tailwind green-500 */
+            color: #ffffff;
+        }
+        button.file-ops:hover {
+            background-color: #059669; /* Tailwind green-600 */
+        }
+
 
         button.danger {
             background-color: #dc2626;
@@ -138,7 +146,7 @@
             background-color: #b91c1c;
         }
 
-        .template-management {
+        .template-management, .file-operations { /* Grouping for layout */
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -153,7 +161,7 @@
             position: fixed;
             bottom: 1rem;
             right: 1rem;
-            z-index: 1050; /* Higher than dialog backdrop */
+            z-index: 1050;
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
@@ -225,14 +233,14 @@
         }
 
         /* Dialog Styles */
-        dialog { /* General dialog styling */
+        dialog {
             border: 1px solid #ccc;
             border-radius: 0.5rem;
             padding: 1.5rem;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             min-width: 300px;
             max-width: 90vw;
-            z-index: 1000; /* Ensure dialogs are on top */
+            z-index: 1000;
         }
         dialog::backdrop {
             background-color: rgba(0, 0, 0, 0.5);
@@ -247,11 +255,11 @@
             font-size: 0.875rem;
             color: #4b5563;
         }
-        dialog input[type="text"], dialog textarea {
+        dialog input[type="text"] { /* Specific to dialogs if needed */
             width: 100%;
             margin-bottom: 1rem;
             box-sizing: border-box;
-            border: 1px solid #d1d5db; /* Match other inputs */
+            border: 1px solid #d1d5db;
             border-radius: 0.375rem;
             padding: 0.5rem 0.75rem;
         }
@@ -291,7 +299,11 @@
             <button id="duplicateTemplateButton" class="secondary">選択を複製</button>
             <button id="deleteTemplateButton" class="danger">選択を削除</button>
         </div>
-        <button id="createShareUrlButton" class="secondary" style="background-color: #16a34a;">共有URLを作成</button> </div>
+        <div class="file-operations">
+            <button id="saveToFileButton" class="file-ops">ファイルに保存</button>
+            <button id="loadFromFileButton" class="file-ops">ファイルから読み込む</button>
+        </div>
+    </div>
 
     <div class="main-container">
         <div class="left-pane">
@@ -329,16 +341,6 @@
         </div>
     </dialog>
 
-    <dialog id="shareUrlDialog">
-        <h3>共有用URL</h3>
-        <p>以下のURLをコピーして共有してください:</p>
-        <textarea id="shareableUrlTextarea" rows="4" style="width: 100%; resize: none; font-size:0.8em;" readonly></textarea>
-        <div class="dialog-actions">
-            <button id="copyShareUrlButton" class="primary">URLをコピー</button>
-            <button id="closeShareUrlDialogButton">閉じる</button>
-        </div>
-    </dialog>
-
     <script>
         // DOM要素の取得
         const ejsTemplateInput = document.getElementById('ejsTemplate');
@@ -354,7 +356,10 @@
         const variablesFormContainer = document.getElementById('variablesFormContainer');
         const addVariableButton = document.getElementById('addVariableButton');
         const variablesJsonDebug = document.getElementById('variablesJsonDebug');
-        const createShareUrlButton = document.getElementById('createShareUrlButton');
+        
+        // File operation buttons
+        const saveToFileButton = document.getElementById('saveToFileButton');
+        const loadFromFileButton = document.getElementById('loadFromFileButton');
 
         // Dialog elements
         const duplicateDialog = document.getElementById('duplicateDialog');
@@ -362,14 +367,8 @@
         const confirmDuplicateButton = document.getElementById('confirmDuplicateButton');
         const cancelDuplicateButton = document.getElementById('cancelDuplicateButton');
 
-        const shareUrlDialog = document.getElementById('shareUrlDialog');
-        const shareableUrlTextarea = document.getElementById('shareableUrlTextarea');
-        const copyShareUrlButton = document.getElementById('copyShareUrlButton');
-        const closeShareUrlDialogButton = document.getElementById('closeShareUrlDialogButton');
-
-
         let db;
-        const DB_NAME = 'EjsTemplateDB_v4'; // Share URL feature, version up
+        const DB_NAME = 'EjsTemplateDB_v4'; // As per user request
         const STORE_NAME = 'templates';
         let currentTemplateId = null;
 
@@ -385,7 +384,7 @@
         // 1. IndexedDBの初期化
         function initDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, 1);
+                const request = indexedDB.open(DB_NAME, 1); // DB version 1
                 request.onerror = (event) => {
                     console.error("IndexedDB error:", event.target.errorCode);
                     showNotification("データベースエラー。", "error");
@@ -534,7 +533,7 @@
             }
         }
 
-        // 3. テンプレート保存
+        // 3. テンプレート保存 (IndexedDB)
         async function saveCurrentTemplate(isNew = false) {
             const name = templateNameInput.value.trim();
             if (!name) {
@@ -584,7 +583,7 @@
             });
         }
 
-        // 4. テンプレートリスト読み込み
+        // 4. テンプレートリスト読み込み (IndexedDB)
         function loadTemplateList() {
             if (!db) { return; }
             const transaction = db.transaction([STORE_NAME], 'readonly');
@@ -617,7 +616,7 @@
             };
         }
 
-        // 5. 選択テンプレート読み込み
+        // 5. 選択テンプレート読み込み (IndexedDB)
         async function loadSelectedTemplate() {
             const selectedIdStr = templateListSelect.value;
             if (!selectedIdStr) {
@@ -714,7 +713,7 @@
             newTemplateNameInput.value = '';
         });
 
-        // 7. テンプレート削除
+        // 7. テンプレート削除 (IndexedDB)
         async function deleteSelectedTemplate() {
             const selectedIdStr = templateListSelect.value;
             if (!selectedIdStr) {
@@ -771,96 +770,87 @@
             }
         });
 
-        // --- 共有URL関連 ---
-        createShareUrlButton.addEventListener('click', () => {
+        // --- ファイルシステムAPI関連 ---
+        async function saveTemplateToFile() {
+            const name = templateNameInput.value.trim() || "untitled_template";
             const templateContent = ejsTemplateInput.value;
             const variablesData = buildJsonFromForm();
-            const variablesJsonString = JSON.stringify(variablesData);
+            const variablesJsonString = JSON.stringify(variablesData, null, 2); // Pretty print JSON
 
-            if (!templateContent && variablesJsonString === '{}') {
-                showNotification("共有する内容がありません。", "info");
-                return;
-            }
-
-            const dataToShare = {
-                t: templateContent, // template
-                v: variablesJsonString // variables
+            const dataToSave = {
+                name: name,
+                template: templateContent,
+                variables: variablesJsonString 
             };
+            const fileContent = JSON.stringify(dataToSave, null, 2); // Overall JSON pretty printed
+            const blob = new Blob([fileContent], { type: 'application/json' });
 
             try {
-                const compressedData = LZString.compressToEncodedURIComponent(JSON.stringify(dataToShare));
-                const shareUrl = `${location.origin}${location.pathname}?d=${compressedData}`;
-                
-                shareableUrlTextarea.value = shareUrl;
-                shareUrlDialog.showModal();
-                shareableUrlTextarea.select(); // テキストエリアの内容を選択状態にする
+                // File System Access API
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: `${name}.json`,
+                    types: [{
+                        description: 'EJS Template Files',
+                        accept: { 'application/json': ['.json'] },
+                    }],
+                });
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                showNotification(`テンプレート「${name}」をファイルに保存しました。`, "success");
             } catch (error) {
-                console.error("Error creating share URL:", error);
-                showNotification("共有URLの作成に失敗しました。", "error");
-            }
-        });
-
-        copyShareUrlButton.addEventListener('click', () => {
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(shareableUrlTextarea.value)
-                    .then(() => {
-                        showNotification('共有URLをクリップボードにコピーしました！', "success");
-                        shareUrlDialog.close();
-                    })
-                    .catch(err => {
-                        console.error('共有URLのコピーに失敗しました: ', err);
-                        showNotification('共有URLのコピーに失敗しました。手動でコピーしてください。', "error");
-                        shareableUrlTextarea.focus();
-                        shareableUrlTextarea.select();
-                    });
-            } else {
-                shareableUrlTextarea.select();
-                showNotification('共有URLを選択しました。手動でコピーしてください。', "info");
-            }
-        });
-
-        closeShareUrlDialogButton.addEventListener('click', () => {
-            shareUrlDialog.close();
-        });
-        shareUrlDialog.addEventListener('close', () => {
-            shareableUrlTextarea.value = ''; // Clear on close
-        });
-
-        function loadFromShareUrl() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const sharedDataParam = urlParams.get('d');
-
-            if (sharedDataParam) {
-                try {
-                    const decompressedJson = LZString.decompressFromEncodedURIComponent(sharedDataParam);
-                    if (decompressedJson) {
-                        const sharedData = JSON.parse(decompressedJson);
-                        ejsTemplateInput.value = sharedData.t || "";
-                        populateFormFromJson(sharedData.v || "");
-                        renderPreview();
-
-                        templateNameInput.value = "共有されたテンプレート";
-                        currentTemplateId = null; // Not a saved template from user's DB
-                        templateListSelect.value = ""; // Deselect any item in the list
-
-                        showNotification("共有されたテンプレートを読み込みました。", "info", 5000);
-                        // Remove the query parameter from the URL without reloading
-                        history.replaceState(null, '', window.location.pathname);
-                    } else {
-                        showNotification("共有データの解凍に失敗しました。URLが破損している可能性があります。", "error", 7000);
-                         history.replaceState(null, '', window.location.pathname); // Clean invalid param
-                    }
-                } catch (error) {
-                    console.error("Error loading from share URL:", error);
-                    showNotification("共有データの読み込みに失敗しました。", "error", 7000);
-                    history.replaceState(null, '', window.location.pathname); // Clean invalid param
+                // Handle user cancellation or other errors
+                if (error.name === 'AbortError') {
+                    console.log('File save aborted by user.');
+                } else {
+                    console.error("Error saving file:", error);
+                    showNotification("ファイルへの保存に失敗しました。", "error");
                 }
             }
         }
 
+        async function loadTemplateFromFile() {
+            try {
+                // File System Access API
+                const [fileHandle] = await window.showOpenFilePicker({
+                    types: [{
+                        description: 'EJS Template Files',
+                        accept: { 'application/json': ['.json'] },
+                    }],
+                    multiple: false,
+                });
+                const file = await fileHandle.getFile();
+                const contents = await file.text();
+                
+                const loadedData = JSON.parse(contents);
+
+                if (typeof loadedData.name === 'string' && 
+                    typeof loadedData.template === 'string' &&
+                    typeof loadedData.variables === 'string') {
+                    
+                    templateNameInput.value = loadedData.name;
+                    ejsTemplateInput.value = loadedData.template;
+                    populateFormFromJson(loadedData.variables); // variables is already a JSON string
+                    
+                    currentTemplateId = null; // Loaded from file, not DB
+                    templateListSelect.value = ""; // Deselect from DB list
+                    renderPreview();
+                    showNotification(`ファイルからテンプレート「${loadedData.name}」を読み込みました。`, "success");
+                } else {
+                    showNotification("ファイルの形式が正しくありません。", "error");
+                }
+            } catch (error) {
+                 if (error.name === 'AbortError') {
+                    console.log('File open aborted by user.');
+                } else {
+                    console.error("Error loading file:", error);
+                    showNotification("ファイルの読み込みに失敗しました。", "error");
+                }
+            }
+        }
+        
         // --- イベントリスナー設定 ---
         ejsTemplateInput.addEventListener('input', renderPreview);
-
         addVariableButton.addEventListener('click', () => {
             addVariableRow();
             renderPreview();
@@ -878,6 +868,10 @@
         duplicateTemplateButton.addEventListener('click', duplicateSelectedTemplate);
         deleteTemplateButton.addEventListener('click', deleteSelectedTemplate);
         templateListSelect.addEventListener('change', loadSelectedTemplate);
+
+        // File operation button listeners
+        saveToFileButton.addEventListener('click', saveTemplateToFile);
+        loadFromFileButton.addEventListener('click', loadTemplateFromFile);
 
         // 自動保存 (デバウンス付き)
         let debounceTimer;
@@ -900,15 +894,13 @@
         window.onload = async () => {
             try {
                 await initDB();
-                loadFromShareUrl(); // Try to load from URL first
-                if (!new URLSearchParams(window.location.search).has('d')) { // Only load list if not loading from share
-                    loadTemplateList();
-                     if (!templateListSelect.value && !ejsTemplateInput.value && variablesFormContainer.children.length === 0) { // If truly empty
-                        addVariableRow("exampleKey", "exampleValue\nwith multiple lines.");
-                    }
+                // No longer loading from share URL
+                loadTemplateList();
+                if (!templateListSelect.value && !ejsTemplateInput.value && variablesFormContainer.children.length === 0) {
+                    addVariableRow("exampleKey", "exampleValue\nwith multiple lines.");
                 }
                 renderPreview();
-                showNotification("EJSテスター (共有URL機能付き)", "info", 5000);
+                showNotification("EJSテスター (ファイル保存/読込機能付き)", "info", 5000);
             } catch (error) {
                 console.error("Initialization failed:", error);
                 showNotification("初期化失敗。", "error", 10000);
