@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タップで色が変わる丸</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        label {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        select {
+            padding: 8px 15px;
+            font-size: 16px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            background: white;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        select:hover {
+            border-color: #764ba2;
+            box-shadow: 0 0 10px rgba(118, 75, 162, 0.3);
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #764ba2;
+            box-shadow: 0 0 15px rgba(118, 75, 162, 0.4);
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .game-area {
+            position: relative;
+            width: 90vw;
+            max-width: 800px;
+            height: 500px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+        }
+
+        .circle {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .circle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .circle.blue {
+            background: radial-gradient(circle at 30% 30%, #4facfe, #00f2fe);
+            border: 2px solid rgba(79, 172, 254, 0.5);
+        }
+
+        .circle.red {
+            background: radial-gradient(circle at 30% 30%, #ff6b6b, #ff3838);
+            border: 2px solid rgba(255, 107, 107, 0.5);
+            animation: colorChange 0.5s ease;
+        }
+
+        @keyframes colorChange {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.2);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .score {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <label for="ballCount">ボールの数:</label>
+        <select id="ballCount">
+            <option value="1">1個</option>
+            <option value="2">2個</option>
+            <option value="3" selected>3個</option>
+            <option value="4">4個</option>
+            <option value="5">5個</option>
+        </select>
+        <button onclick="resetGame()">リセット</button>
+    </div>
+
+    <div class="game-area" id="gameArea">
+        <div class="score" id="score">タップ数: 0</div>
+    </div>
+
+    <script>
+        let circles = [];
+        let tapCount = 0;
+
+        function getRandomPosition() {
+            const gameArea = document.getElementById('gameArea');
+            const maxX = gameArea.clientWidth - 60;
+            const maxY = gameArea.clientHeight - 60;
+            
+            return {
+                x: Math.random() * maxX,
+                y: Math.random() * maxY
+            };
+        }
+
+        function createCircle(index) {
+            const circle = document.createElement('div');
+            circle.className = 'circle blue';
+            circle.id = `circle-${index}`;
+            
+            const pos = getRandomPosition();
+            circle.style.left = pos.x + 'px';
+            circle.style.top = pos.y + 'px';
+            
+            circle.addEventListener('click', function() {
+                if (this.classList.contains('blue')) {
+                    this.classList.remove('blue');
+                    this.classList.add('red');
+                    tapCount++;
+                    updateScore();
+                    
+                    // 自動的に新しい位置に青い丸として再配置（1秒後）
+                    setTimeout(() => {
+                        const newPos = getRandomPosition();
+                        this.style.left = newPos.x + 'px';
+                        this.style.top = newPos.y + 'px';
+                        this.classList.remove('red');
+                        this.classList.add('blue');
+                    }, 1000);
+                }
+            });
+            
+            return circle;
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = `タップ数: ${tapCount}`;
+        }
+
+        function initGame() {
+            const gameArea = document.getElementById('gameArea');
+            const ballCount = parseInt(document.getElementById('ballCount').value);
+            
+            // 既存の丸を削除
+            circles.forEach(circle => {
+                if (circle.parentNode) {
+                    circle.parentNode.removeChild(circle);
+                }
+            });
+            circles = [];
+            
+            // 新しい丸を作成
+            for (let i = 0; i < ballCount; i++) {
+                const circle = createCircle(i);
+                gameArea.appendChild(circle);
+                circles.push(circle);
+            }
+        }
+
+        function resetGame() {
+            tapCount = 0;
+            updateScore();
+            initGame();
+        }
+
+        // ボール数が変更されたときの処理
+        document.getElementById('ballCount').addEventListener('change', function() {
+            initGame();
+        });
+
+        // 初期化
+        window.addEventListener('load', function() {
+            initGame();
+        });
+
+        // ウィンドウサイズが変更されたときの処理
+        window.addEventListener('resize', function() {
+            circles.forEach(circle => {
+                const pos = getRandomPosition();
+                circle.style.left = pos.x + 'px';
+                circle.style.top = pos.y + 'px';
+            });
+        });
+    </script>
+</body>
+</html>
