@@ -127,8 +127,8 @@
                 border-width: 4px;
             }
             100% {
-                width: 500px;
-                height: 500px;
+                width: 1200px;
+                height: 1200px;
                 opacity: 0;
                 border-width: 1px;
             }
@@ -321,6 +321,38 @@
             z-index: 100;
         }
 
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 220, 240, 0.95));
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(236, 72, 153, 0.4);
+            text-align: center;
+            z-index: 1001;
+        }
+
+        .game-over h2 {
+            color: #DC143C;
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.5);
+        }
+
+        .game-over p {
+            color: #4169E1;
+            font-size: 24px;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+
+        .game-over button {
+            padding: 12px 24px;
+            font-size: 18px;
+        }
+
         .particle {
             position: absolute;
             width: 20px;
@@ -372,6 +404,12 @@
 </head>
 <body>
     <div class="control-panel">
+        <label for="difficulty">難易度:</label>
+        <select id="difficulty">
+            <option value="3000">簡単 (3秒)</option>
+            <option value="1000" selected>普通 (1秒)</option>
+            <option value="500">難しい (0.5秒)</option>
+        </select>
         <label for="ballCount">ミャクミャクの数:</label>
         <select id="ballCount">
             <option value="1">1体</option>
@@ -379,8 +417,14 @@
             <option value="3" selected>3体</option>
             <option value="4">4体</option>
             <option value="5">5体</option>
+            <option value="6">6体</option>
+            <option value="7">7体</option>
+            <option value="8">8体</option>
+            <option value="9">9体</option>
+            <option value="10">10体</option>
         </select>
         <button onclick="resetGame()">リセット</button>
+        <button id="enableSoundBtn" onclick="enableSound()" style="display:none;">🔊 音を有効化</button>
         <div class="sound-toggle">
             <input type="checkbox" id="soundEnabled" checked>
             <label for="soundEnabled">🔊 サウンド</label>
@@ -390,483 +434,13 @@
 
     <div class="game-area" id="gameArea">
         <div class="score" id="score">タップ数: 0</div>
+        <div class="game-over" id="gameOver" style="display: none;">
+            <h2>ゲームオーバー！</h2>
+            <p>スコア: <span id="finalScore">0</span></p>
+            <button onclick="resetGame()">もう一度プレイ</button>
+        </div>
     </div>
 
-    <script>
-        let creatures = [];
-        let tapCount = 0;
-        let synth;
-        let reverb;
-        let delay;
-        let soundInitialized = false;
-        let animationId;
-
-        // 物理演算用の速度
-        let velocities = [];
-
-        // 全画面切り替え
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.log(`全画面モードエラー: ${err.message}`);
-                });
-            } else {
-                document.exitFullscreen();
-            }
-        }
-
-        // サウンドの初期化
-        async function initSound() {
-            if (soundInitialized) return;
-            
-            await Tone.start();
-            
-            reverb = new Tone.Reverb({
-                decay: 2.5,
-                wet: 0.4
-            }).toDestination();
-            
-            delay = new Tone.FeedbackDelay({
-                delayTime: "16n",
-                feedback: 0.4,
-                wet: 0.3
-            }).connect(reverb);
-            
-            synth = new Tone.PolySynth(Tone.Synth, {
-                oscillator: {
-                    type: "sine"
-                },
-                envelope: {
-                    attack: 0.005,
-                    decay: 0.3,
-                    sustain: 0.1,
-                    release: 2
-                },
-                volume: -8
-            }).connect(delay);
-            
-            soundInitialized = true;
-        }
-
-        // ピロロン音を再生
-        function playPiroron() {
-            if (!document.getElementById('soundEnabled').checked) return;
-            if (!soundInitialized) return;
-            
-            const notes = [
-                ["E5", "16n"],
-                ["G5", "16n", "+16n"],
-                ["B5", "16n", "+8n"],
-                ["E6", "8n", "+8n+16n"],
-                ["G6", "8n", "+4n"]
-            ];
-            
-            const now = Tone.now();
-            let time = 0;
-            
-            notes.forEach((note, index) => {
-                synth.triggerAttackRelease(note[0], note[1], now + time);
-                time += 0.03;
-            });
-            
-            setTimeout(() => {
-                synth.triggerAttackRelease(["B6", "E7"], "32n", Tone.now());
-            }, 100);
-        }
-
-        // タッチ位置インジケーター
-        function createTouchIndicator(x, y) {
-            const indicator = document.createElement('div');
-            indicator.className = 'touch-indicator';
-            indicator.style.left = x + 'px';
-            indicator.style.top = y + 'px';
-            document.getElementById('gameArea').appendChild(indicator);
-            setTimeout(() => indicator.remove(), 500);
-        }
-
-        // 衝撃波エフェクトを作成（正確な位置に）
-        function createShockwave(x, y) {
-            const waves = ['primary', 'secondary', 'tertiary'];
-            
-            waves.forEach((waveClass, index) => {
-                setTimeout(() => {
-                    const wave = document.createElement('div');
-                    wave.className = `shockwave ${waveClass}`;
-                    wave.style.left = x + 'px';
-                    wave.style.top = y + 'px';
-                    
-                    document.getElementById('gameArea').appendChild(wave);
-                    setTimeout(() => wave.remove(), 2600);
-                }, index * 150);
-            });
-        }
-
-        // 衝撃波による物理的な影響（大幅に遅く）
-        function applyShockwaveForce(epicenterX, epicenterY) {
-            const shockwaveStrength = 150; // 800から150に減少
-            const maxDistance = 350;
-            
-            creatures.forEach((creature, index) => {
-                const creatureX = parseFloat(creature.style.left) + 40;
-                const creatureY = parseFloat(creature.style.top) + 40;
-                
-                const dx = creatureX - epicenterX;
-                const dy = creatureY - epicenterY;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                if (distance < maxDistance && distance > 0) {
-                    // 距離に応じた力の計算（近いほど強い）
-                    const forceMagnitude = shockwaveStrength * (1 - distance / maxDistance);
-                    const forceX = (dx / distance) * forceMagnitude;
-                    const forceY = (dy / distance) * forceMagnitude;
-                    
-                    // 力を大幅に減少（/20 から /80 に変更）
-                    velocities[index].vx += forceX / 80;
-                    velocities[index].vy += forceY / 80;
-                    
-                    // ゆっくり回転エフェクト
-                    creature.style.animation = 'slowSpin 1s ease-out';
-                    setTimeout(() => {
-                        creature.style.animation = '';
-                    }, 1000);
-                }
-            });
-        }
-
-        // パーティクルとスパークルエフェクト
-        function createEffects(x, y) {
-            // パーティクル
-            const colors = ['#FF69B4', '#4169E1', '#FFD700', '#FF1493', '#00BFFF'];
-            
-            for (let i = 0; i < 20; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                particle.style.left = x + 'px';
-                particle.style.top = y + 'px';
-                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
-                
-                const angle = (Math.PI * 2 * i) / 20;
-                const distance = 60 + Math.random() * 60;
-                particle.style.setProperty('--x', Math.cos(angle) * distance + 'px');
-                particle.style.setProperty('--y', Math.sin(angle) * distance + 'px');
-                
-                document.getElementById('gameArea').appendChild(particle);
-                setTimeout(() => particle.remove(), 1500);
-            }
-
-            // スパークル
-            const sparkles = ['✨', '⭐', '💫', '🌟'];
-            for (let i = 0; i < 5; i++) {
-                const sparkle = document.createElement('div');
-                sparkle.className = 'sparkle';
-                sparkle.textContent = sparkles[Math.floor(Math.random() * sparkles.length)];
-                sparkle.style.left = (x - 20 + Math.random() * 40) + 'px';
-                sparkle.style.top = (y - 20 + Math.random() * 40) + 'px';
-                
-                document.getElementById('gameArea').appendChild(sparkle);
-                setTimeout(() => sparkle.remove(), 1200);
-            }
-        }
-
-        // タッチイベントの処理
-        function handleTouch(e) {
-            e.preventDefault();
-            const gameArea = document.getElementById('gameArea');
-            const rect = gameArea.getBoundingClientRect();
-            
-            // タッチ座標を取得
-            const touch = e.touches[0] || e.changedTouches[0];
-            const touchX = touch.clientX - rect.left;
-            const touchY = touch.clientY - rect.top;
-            
-            // タッチ位置を表示
-            createTouchIndicator(touchX, touchY);
-            
-            // 衝撃波を作成（正確な位置に）
-            createShockwave(touchX, touchY);
-            
-            // 物理的な衝撃波を適用
-            applyShockwaveForce(touchX, touchY);
-            
-            // エフェクト
-            createEffects(touchX, touchY);
-        }
-
-        function getRandomPosition() {
-            const gameArea = document.getElementById('gameArea');
-            const margin = 100;
-            const maxX = gameArea.clientWidth - margin;
-            const maxY = gameArea.clientHeight - margin;
-            
-            return {
-                x: margin/2 + Math.random() * (maxX - margin/2),
-                y: margin/2 + Math.random() * (maxY - margin/2)
-            };
-        }
-
-        function createCreature(index) {
-            const creature = document.createElement('div');
-            creature.className = 'creature blue';
-            creature.id = `creature-${index}`;
-            
-            // 本体
-            const body = document.createElement('div');
-            body.className = 'body';
-            creature.appendChild(body);
-            
-            // 目
-            const leftEye = document.createElement('div');
-            leftEye.className = 'eye left';
-            const leftPupil = document.createElement('div');
-            leftPupil.className = 'pupil';
-            leftEye.appendChild(leftPupil);
-            creature.appendChild(leftEye);
-            
-            const rightEye = document.createElement('div');
-            rightEye.className = 'eye right';
-            const rightPupil = document.createElement('div');
-            rightPupil.className = 'pupil';
-            rightEye.appendChild(rightPupil);
-            creature.appendChild(rightEye);
-            
-            // 触手
-            for (let i = 1; i <= 3; i++) {
-                const tentacle = document.createElement('div');
-                tentacle.className = `tentacle tentacle${i}`;
-                creature.appendChild(tentacle);
-            }
-            
-            const pos = getRandomPosition();
-            creature.style.left = pos.x + 'px';
-            creature.style.top = pos.y + 'px';
-            
-            // 速度の初期化
-            velocities[index] = { vx: 0, vy: 0 };
-            
-            // タッチイベントでクリーチャーをタップ
-            creature.addEventListener('touchstart', async function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                
-                if (this.classList.contains('blue')) {
-                    if (!soundInitialized) {
-                        await initSound();
-                    }
-                    
-                    this.classList.remove('blue');
-                    this.classList.add('red');
-                    tapCount++;
-                    updateScore();
-                    
-                    playPiroron();
-                    
-                    const rect = this.getBoundingClientRect();
-                    const gameAreaRect = document.getElementById('gameArea').getBoundingClientRect();
-                    const creatureX = rect.left - gameAreaRect.left + 40;
-                    const creatureY = rect.top - gameAreaRect.top + 40;
-                    
-                    // 衝撃波を作成
-                    createShockwave(creatureX, creatureY);
-                    
-                    // 物理的な衝撃波を適用
-                    applyShockwaveForce(creatureX, creatureY);
-                    
-                    // パーティクルエフェクト
-                    createEffects(creatureX, creatureY);
-                    
-                    setTimeout(() => {
-                        this.classList.remove('red');
-                        this.classList.add('blue');
-                    }, 1000);
-                }
-            });
-            
-            // マウスイベントも残す（デスクトップ用）
-            creature.addEventListener('click', async function(e) {
-                e.stopPropagation();
-                
-                if (this.classList.contains('blue')) {
-                    if (!soundInitialized) {
-                        await initSound();
-                    }
-                    
-                    this.classList.remove('blue');
-                    this.classList.add('red');
-                    tapCount++;
-                    updateScore();
-                    
-                    playPiroron();
-                    
-                    const rect = this.getBoundingClientRect();
-                    const gameAreaRect = document.getElementById('gameArea').getBoundingClientRect();
-                    const creatureX = rect.left - gameAreaRect.left + 40;
-                    const creatureY = rect.top - gameAreaRect.top + 40;
-                    
-                    createShockwave(creatureX, creatureY);
-                    applyShockwaveForce(creatureX, creatureY);
-                    createEffects(creatureX, creatureY);
-                    
-                    setTimeout(() => {
-                        this.classList.remove('red');
-                        this.classList.add('blue');
-                    }, 1000);
-                }
-            });
-            
-            return creature;
-        }
-
-        function updateScore() {
-            document.getElementById('score').textContent = `タップ数: ${tapCount}`;
-        }
-
-        // 物理演算の更新（よりゆっくり）
-        function updatePhysics() {
-            const gameArea = document.getElementById('gameArea');
-            const maxX = gameArea.clientWidth - 80;
-            const maxY = gameArea.clientHeight - 80;
-            const repulsionStrength = 1500; // 3000から1500に減少
-            const damping = 0.96; // 0.92から0.96に増加（減速を早める）
-            const minDistance = 100;
-
-            for (let i = 0; i < creatures.length; i++) {
-                const creature1 = creatures[i];
-                const x1 = parseFloat(creature1.style.left);
-                const y1 = parseFloat(creature1.style.top);
-
-                // 他のクリーチャーとの反発
-                for (let j = i + 1; j < creatures.length; j++) {
-                    const creature2 = creatures[j];
-                    const x2 = parseFloat(creature2.style.left);
-                    const y2 = parseFloat(creature2.style.top);
-
-                    const dx = x2 - x1;
-                    const dy = y2 - y1;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-
-                    if (distance < minDistance && distance > 0) {
-                        const force = repulsionStrength / (distance * distance);
-                        const fx = (dx / distance) * force;
-                        const fy = (dy / distance) * force;
-
-                        velocities[i].vx -= fx / 150; // 100から150に変更
-                        velocities[i].vy -= fy / 150;
-                        velocities[j].vx += fx / 150;
-                        velocities[j].vy += fy / 150;
-                    }
-                }
-
-                // 速度を適用
-                velocities[i].vx *= damping;
-                velocities[i].vy *= damping;
-
-                let newX = x1 + velocities[i].vx;
-                let newY = y1 + velocities[i].vy;
-
-                // 境界チェック（バウンス効果）
-                if (newX < 0) {
-                    newX = 0;
-                    velocities[i].vx = Math.abs(velocities[i].vx) * 0.5;
-                }
-                if (newX > maxX) {
-                    newX = maxX;
-                    velocities[i].vx = -Math.abs(velocities[i].vx) * 0.5;
-                }
-                if (newY < 0) {
-                    newY = 0;
-                    velocities[i].vy = Math.abs(velocities[i].vy) * 0.5;
-                }
-                if (newY > maxY) {
-                    newY = maxY;
-                    velocities[i].vy = -Math.abs(velocities[i].vy) * 0.5;
-                }
-
-                creature1.style.left = newX + 'px';
-                creature1.style.top = newY + 'px';
-            }
-
-            animationId = requestAnimationFrame(updatePhysics);
-        }
-
-        // ゲームエリアのタッチイベント
-        document.addEventListener('DOMContentLoaded', function() {
-            const gameArea = document.getElementById('gameArea');
-            
-            // タッチイベント（モバイル用）
-            gameArea.addEventListener('touchstart', handleTouch);
-            
-            // マウスイベント（デスクトップ用）
-            gameArea.addEventListener('click', function(e) {
-                if (e.target === gameArea || e.target === document.querySelector('.score')) {
-                    const rect = gameArea.getBoundingClientRect();
-                    const clickX = e.clientX - rect.left;
-                    const clickY = e.clientY - rect.top;
-                    
-                    createTouchIndicator(clickX, clickY);
-                    createShockwave(clickX, clickY);
-                    applyShockwaveForce(clickX, clickY);
-                    createEffects(clickX, clickY);
-                }
-            });
-        });
-
-        function initGame() {
-            const gameArea = document.getElementById('gameArea');
-            const creatureCount = parseInt(document.getElementById('ballCount').value);
-            
-            // アニメーションを停止
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-            }
-            
-            // 既存のクリーチャーを削除
-            creatures.forEach(creature => {
-                if (creature.parentNode) {
-                    creature.parentNode.removeChild(creature);
-                }
-            });
-            creatures = [];
-            velocities = [];
-            
-            // 新しいクリーチャーを作成
-            for (let i = 0; i < creatureCount; i++) {
-                const creature = createCreature(i);
-                gameArea.appendChild(creature);
-                creatures.push(creature);
-            }
-            
-            // 物理演算を開始
-            updatePhysics();
-        }
-
-        function resetGame() {
-            tapCount = 0;
-            updateScore();
-            initGame();
-        }
-
-        document.getElementById('ballCount').addEventListener('change', function() {
-            initGame();
-        });
-
-        window.addEventListener('load', function() {
-            initGame();
-        });
-
-        // タッチイベントでのスクロール防止
-        document.addEventListener('touchmove', function(e) {
-            e.preventDefault();
-        }, { passive: false });
-
-        // ダブルタップでのズーム防止
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', function(e) {
-            const now = Date.now();
-            if (now - lastTouchEnd <= 300) {
-                e.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
-    </script>
+    <script type="module" src="./assets/game.js"></script>
 </body>
 </html>

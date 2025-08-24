@@ -53,6 +53,11 @@ When modifying the PWA in `/random/`:
 ### Games
 - alphabet.html: Typing practice game with sound effects and visual feedback
 - touch.html: Interactive touch-based game with particle effects and creature simulation
+  - Features difficulty modes (Easy: 3s, Normal: 1s, Hard: 0.5s)
+  - Game over mechanism when creatures aren't tapped in time
+  - Supports 1-10 creatures configuration
+  - Extended shockwave effects
+  - iOS audio compatibility with manual enable button
 
 ### Mermaid Editor (/mermaid/)
 - Pre-built application (not source code)
