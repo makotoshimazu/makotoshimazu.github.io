@@ -2,170 +2,306 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>タップで色が変わる丸</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ミャクミャク風タップゲーム</title>
     <style>
-        body {
+        * {
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            touch-action: none;
+        }
+
+        body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            background: radial-gradient(ellipse at center, #FFE5F1 0%, #E8F4FF 50%, #FFE5E5 100%);
             display: flex;
             flex-direction: column;
-            align-items: center;
         }
 
         .control-panel {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            margin-bottom: 30px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 220, 240, 0.9));
+            padding: 15px;
             display: flex;
             align-items: center;
-            gap: 20px;
-            backdrop-filter: blur(10px);
+            gap: 15px;
+            box-shadow: 0 5px 20px rgba(236, 72, 153, 0.2);
+            position: relative;
+            z-index: 1000;
+            flex-shrink: 0;
         }
 
         label {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
-            color: #333;
+            color: #DC143C;
         }
 
         select {
-            padding: 8px 15px;
-            font-size: 16px;
-            border: 2px solid #667eea;
-            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 14px;
+            border: 2px solid #FF69B4;
+            border-radius: 20px;
             background: white;
-            color: #333;
+            color: #DC143C;
             cursor: pointer;
             transition: all 0.3s ease;
-        }
-
-        select:hover {
-            border-color: #764ba2;
-            box-shadow: 0 0 10px rgba(118, 75, 162, 0.3);
-        }
-
-        select:focus {
-            outline: none;
-            border-color: #764ba2;
-            box-shadow: 0 0 15px rgba(118, 75, 162, 0.4);
         }
 
         button {
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 8px 16px;
+            font-size: 14px;
             font-weight: 600;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #FF69B4 0%, #4169E1 100%);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
         }
 
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4);
         }
 
-        button:active {
-            transform: translateY(0);
+        .fullscreen-btn {
+            margin-left: auto;
+            background: linear-gradient(135deg, #4169E1 0%, #FF69B4 100%);
         }
 
         .sound-toggle {
-            margin-left: 20px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .sound-toggle input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             cursor: pointer;
         }
 
         .game-area {
             position: relative;
-            width: 90vw;
-            max-width: 800px;
-            height: 500px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            flex: 1;
+            width: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.6), transparent),
+                        radial-gradient(circle at 20% 80%, rgba(255, 182, 193, 0.3), transparent),
+                        radial-gradient(circle at 80% 20%, rgba(135, 206, 250, 0.3), transparent);
             overflow: hidden;
         }
 
-        .circle {
+        .shockwave {
+            position: absolute;
+            border-radius: 50%;
+            border: 3px solid;
+            pointer-events: none;
+            animation: shockwaveExpand 1.5s ease-out forwards;
+        }
+
+        @keyframes shockwaveExpand {
+            0% {
+                width: 0;
+                height: 0;
+                opacity: 1;
+                border-width: 8px;
+            }
+            50% {
+                opacity: 0.6;
+                border-width: 4px;
+            }
+            100% {
+                width: 600px;
+                height: 600px;
+                opacity: 0;
+                border-width: 1px;
+            }
+        }
+
+        .shockwave.primary {
+            border-color: #FF69B4;
+            box-shadow: 0 0 40px #FF69B4;
+        }
+
+        .shockwave.secondary {
+            border-color: #4169E1;
+            box-shadow: 0 0 40px #4169E1;
+            animation-delay: 0.1s;
+            animation-duration: 1.8s;
+        }
+
+        .shockwave.tertiary {
+            border-color: #FFD700;
+            box-shadow: 0 0 30px #FFD700;
+            animation-delay: 0.2s;
+            animation-duration: 2s;
+        }
+
+        .creature {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            cursor: pointer;
+            transition: none;
+        }
+
+        .creature.flying {
+            transition: none !important;
+        }
+
+        .creature:hover {
+            transform: scale(1.1);
+        }
+
+        .creature.blue {
+            filter: drop-shadow(0 6px 20px rgba(65, 105, 225, 0.5));
+        }
+
+        .creature.red {
+            filter: drop-shadow(0 6px 20px rgba(220, 20, 60, 0.5));
+            animation: colorPop 0.5s ease;
+        }
+
+        @keyframes colorPop {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.3) rotate(10deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        .body {
             position: absolute;
             width: 60px;
             height: 60px;
+            border-radius: 50% 40% 50% 40%;
+            top: 10px;
+            left: 10px;
+            animation: wobble 3s ease-in-out infinite;
+        }
+
+        .blue .body {
+            background: radial-gradient(circle at 30% 30%, #87CEEB, #4169E1);
+            box-shadow: inset -5px -5px 10px rgba(0, 0, 139, 0.3);
+        }
+
+        .red .body {
+            background: radial-gradient(circle at 30% 30%, #FF69B4, #DC143C);
+            box-shadow: inset -5px -5px 10px rgba(139, 0, 0, 0.3);
+        }
+
+        @keyframes wobble {
+            0%, 100% { border-radius: 50% 40% 50% 40%; }
+            25% { border-radius: 40% 50% 40% 50%; }
+            50% { border-radius: 50% 45% 50% 45%; }
+            75% { border-radius: 45% 50% 45% 50%; }
+        }
+
+        .eye {
+            position: absolute;
+            width: 12px;
+            height: 16px;
+            background: white;
             border-radius: 50%;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            animation: pulse 2s ease-in-out infinite;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.05);
-            }
+        .eye.left {
+            top: 25px;
+            left: 20px;
         }
 
-        .circle:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        .eye.right {
+            top: 25px;
+            right: 20px;
         }
 
-        .circle.blue {
-            background: radial-gradient(circle at 30% 30%, #4facfe, #00f2fe);
-            border: 2px solid rgba(79, 172, 254, 0.5);
+        .pupil {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #333;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: lookAround 4s ease-in-out infinite;
         }
 
-        .circle.red {
-            background: radial-gradient(circle at 30% 30%, #ff6b6b, #ff3838);
-            border: 2px solid rgba(255, 107, 107, 0.5);
-            animation: colorChange 0.5s ease;
+        @keyframes lookAround {
+            0%, 100% { transform: translate(-50%, -50%); }
+            25% { transform: translate(-30%, -50%); }
+            50% { transform: translate(-50%, -30%); }
+            75% { transform: translate(-70%, -50%); }
         }
 
-        @keyframes colorChange {
-            0% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.2);
-            }
-            100% {
-                transform: scale(1);
-            }
+        .tentacle {
+            position: absolute;
+            width: 15px;
+            height: 25px;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            animation: tentacleWave 2s ease-in-out infinite;
+        }
+
+        .blue .tentacle {
+            background: linear-gradient(to bottom, #4169E1, #87CEEB);
+        }
+
+        .red .tentacle {
+            background: linear-gradient(to bottom, #DC143C, #FF69B4);
+        }
+
+        .tentacle1 {
+            bottom: -10px;
+            left: 15px;
+            animation-delay: 0s;
+        }
+
+        .tentacle2 {
+            bottom: -10px;
+            left: 32px;
+            animation-delay: 0.2s;
+        }
+
+        .tentacle3 {
+            bottom: -10px;
+            right: 15px;
+            animation-delay: 0.4s;
+        }
+
+        @keyframes tentacleWave {
+            0%, 100% { transform: scaleY(1) rotate(0deg); }
+            50% { transform: scaleY(1.2) rotate(5deg); }
         }
 
         .score {
             position: absolute;
             top: 20px;
             right: 20px;
-            font-size: 20px;
+            font-size: 24px;
             font-weight: bold;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            color: #DC143C;
+            text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.8);
+            z-index: 100;
         }
 
         .particle {
             position: absolute;
-            width: 10px;
-            height: 10px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             pointer-events: none;
             animation: particleFloat 1s ease-out forwards;
@@ -181,24 +317,52 @@
                 opacity: 0;
             }
         }
+
+        .sparkle {
+            position: absolute;
+            color: gold;
+            font-size: 20px;
+            pointer-events: none;
+            animation: sparkleAnim 1s ease-out forwards;
+        }
+
+        @keyframes sparkleAnim {
+            0% {
+                transform: translateY(0) scale(0);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(-20px) scale(1.5);
+            }
+            100% {
+                transform: translateY(-40px) scale(0);
+                opacity: 0;
+            }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(720deg); }
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
 </head>
 <body>
     <div class="control-panel">
-        <label for="ballCount">ボールの数:</label>
+        <label for="ballCount">ミャクミャクの数:</label>
         <select id="ballCount">
-            <option value="1">1個</option>
-            <option value="2">2個</option>
-            <option value="3" selected>3個</option>
-            <option value="4">4個</option>
-            <option value="5">5個</option>
+            <option value="1">1体</option>
+            <option value="2">2体</option>
+            <option value="3" selected>3体</option>
+            <option value="4">4体</option>
+            <option value="5">5体</option>
         </select>
         <button onclick="resetGame()">リセット</button>
         <div class="sound-toggle">
             <input type="checkbox" id="soundEnabled" checked>
             <label for="soundEnabled">🔊 サウンド</label>
         </div>
+        <button class="fullscreen-btn" onclick="toggleFullscreen()">⛶ 全画面</button>
     </div>
 
     <div class="game-area" id="gameArea">
@@ -206,12 +370,27 @@
     </div>
 
     <script>
-        let circles = [];
+        let creatures = [];
         let tapCount = 0;
         let synth;
         let reverb;
         let delay;
         let soundInitialized = false;
+        let animationId;
+
+        // 物理演算用の速度
+        let velocities = [];
+
+        // 全画面切り替え
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`全画面モードエラー: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
 
         // サウンドの初期化
         async function initSound() {
@@ -219,30 +398,28 @@
             
             await Tone.start();
             
-            // リバーブとディレイエフェクトを作成
             reverb = new Tone.Reverb({
-                decay: 2,
-                wet: 0.3
+                decay: 2.5,
+                wet: 0.4
             }).toDestination();
             
             delay = new Tone.FeedbackDelay({
                 delayTime: "16n",
-                feedback: 0.3,
-                wet: 0.2
+                feedback: 0.4,
+                wet: 0.3
             }).connect(reverb);
             
-            // シンセサイザーを作成
             synth = new Tone.PolySynth(Tone.Synth, {
                 oscillator: {
                     type: "sine"
                 },
                 envelope: {
-                    attack: 0.01,
+                    attack: 0.005,
                     decay: 0.3,
                     sustain: 0.1,
-                    release: 1.5
+                    release: 2
                 },
-                volume: -10
+                volume: -8
             }).connect(delay);
             
             soundInitialized = true;
@@ -254,10 +431,11 @@
             if (!soundInitialized) return;
             
             const notes = [
-                ["C5", "8n"],
-                ["E5", "8n", "+8n"],
-                ["G5", "8n", "+4n"],
-                ["C6", "4n", "+4n+8n"]
+                ["E5", "16n"],
+                ["G5", "16n", "+16n"],
+                ["B5", "16n", "+8n"],
+                ["E6", "8n", "+8n+16n"],
+                ["G6", "8n", "+4n"]
             ];
             
             const now = Tone.now();
@@ -265,60 +443,153 @@
             
             notes.forEach((note, index) => {
                 synth.triggerAttackRelease(note[0], note[1], now + time);
-                time += 0.05;
+                time += 0.03;
             });
             
-            // 追加の装飾音
             setTimeout(() => {
-                synth.triggerAttackRelease(["E6", "G6"], "16n", Tone.now());
-            }, 150);
+                synth.triggerAttackRelease(["B6", "E7"], "32n", Tone.now());
+            }, 100);
         }
 
-        // パーティクルエフェクトを作成
-        function createParticles(x, y) {
-            const colors = ['#FFD700', '#FF69B4', '#00CED1', '#FF6347', '#32CD32'];
+        // 衝撃波エフェクトを作成
+        function createShockwave(x, y) {
+            const waves = ['primary', 'secondary', 'tertiary'];
             
-            for (let i = 0; i < 8; i++) {
+            waves.forEach((waveClass, index) => {
+                setTimeout(() => {
+                    const wave = document.createElement('div');
+                    wave.className = `shockwave ${waveClass}`;
+                    wave.style.left = (x - 300) + 'px';
+                    wave.style.top = (y - 300) + 'px';
+                    
+                    document.getElementById('gameArea').appendChild(wave);
+                    setTimeout(() => wave.remove(), 2000);
+                }, index * 100);
+            });
+        }
+
+        // 衝撃波による物理的な影響
+        function applyShockwaveForce(epicenterX, epicenterY) {
+            const shockwaveStrength = 800;
+            const maxDistance = 400;
+            
+            creatures.forEach((creature, index) => {
+                const creatureX = parseFloat(creature.style.left) + 40;
+                const creatureY = parseFloat(creature.style.top) + 40;
+                
+                const dx = creatureX - epicenterX;
+                const dy = creatureY - epicenterY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < maxDistance && distance > 0) {
+                    // 距離に応じた力の計算（近いほど強い）
+                    const forceMagnitude = shockwaveStrength * (1 - distance / maxDistance);
+                    const forceX = (dx / distance) * forceMagnitude;
+                    const forceY = (dy / distance) * forceMagnitude;
+                    
+                    // ダイナミックな動きのために力を増幅
+                    velocities[index].vx += forceX / 20;
+                    velocities[index].vy += forceY / 20;
+                    
+                    // 回転エフェクトを追加
+                    creature.style.animation = 'spin 0.5s ease-out';
+                    setTimeout(() => {
+                        creature.style.animation = '';
+                    }, 500);
+                }
+            });
+        }
+
+        // パーティクルとスパークルエフェクト
+        function createEffects(x, y) {
+            // パーティクル
+            const colors = ['#FF69B4', '#4169E1', '#FFD700', '#FF1493', '#00BFFF'];
+            
+            for (let i = 0; i < 20; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'particle';
                 particle.style.left = x + 'px';
                 particle.style.top = y + 'px';
                 particle.style.background = colors[Math.floor(Math.random() * colors.length)];
                 
-                const angle = (Math.PI * 2 * i) / 8;
-                const distance = 50 + Math.random() * 50;
+                const angle = (Math.PI * 2 * i) / 20;
+                const distance = 80 + Math.random() * 80;
                 particle.style.setProperty('--x', Math.cos(angle) * distance + 'px');
                 particle.style.setProperty('--y', Math.sin(angle) * distance + 'px');
                 
                 document.getElementById('gameArea').appendChild(particle);
-                
                 setTimeout(() => particle.remove(), 1000);
+            }
+
+            // スパークル
+            const sparkles = ['✨', '⭐', '💫', '🌟'];
+            for (let i = 0; i < 5; i++) {
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sparkle';
+                sparkle.textContent = sparkles[Math.floor(Math.random() * sparkles.length)];
+                sparkle.style.left = (x - 20 + Math.random() * 40) + 'px';
+                sparkle.style.top = (y - 20 + Math.random() * 40) + 'px';
+                
+                document.getElementById('gameArea').appendChild(sparkle);
+                setTimeout(() => sparkle.remove(), 1000);
             }
         }
 
         function getRandomPosition() {
             const gameArea = document.getElementById('gameArea');
-            const maxX = gameArea.clientWidth - 60;
-            const maxY = gameArea.clientHeight - 60;
+            const margin = 100;
+            const maxX = gameArea.clientWidth - margin;
+            const maxY = gameArea.clientHeight - margin;
             
             return {
-                x: Math.random() * maxX,
-                y: Math.random() * maxY
+                x: margin/2 + Math.random() * (maxX - margin/2),
+                y: margin/2 + Math.random() * (maxY - margin/2)
             };
         }
 
-        function createCircle(index) {
-            const circle = document.createElement('div');
-            circle.className = 'circle blue';
-            circle.id = `circle-${index}`;
+        function createCreature(index) {
+            const creature = document.createElement('div');
+            creature.className = 'creature blue';
+            creature.id = `creature-${index}`;
+            
+            // 本体
+            const body = document.createElement('div');
+            body.className = 'body';
+            creature.appendChild(body);
+            
+            // 目
+            const leftEye = document.createElement('div');
+            leftEye.className = 'eye left';
+            const leftPupil = document.createElement('div');
+            leftPupil.className = 'pupil';
+            leftEye.appendChild(leftPupil);
+            creature.appendChild(leftEye);
+            
+            const rightEye = document.createElement('div');
+            rightEye.className = 'eye right';
+            const rightPupil = document.createElement('div');
+            rightPupil.className = 'pupil';
+            rightEye.appendChild(rightPupil);
+            creature.appendChild(rightEye);
+            
+            // 触手
+            for (let i = 1; i <= 3; i++) {
+                const tentacle = document.createElement('div');
+                tentacle.className = `tentacle tentacle${i}`;
+                creature.appendChild(tentacle);
+            }
             
             const pos = getRandomPosition();
-            circle.style.left = pos.x + 'px';
-            circle.style.top = pos.y + 'px';
+            creature.style.left = pos.x + 'px';
+            creature.style.top = pos.y + 'px';
             
-            circle.addEventListener('click', async function(e) {
+            // 速度の初期化
+            velocities[index] = { vx: 0, vy: 0 };
+            
+            creature.addEventListener('click', async function(e) {
+                e.stopPropagation();
+                
                 if (this.classList.contains('blue')) {
-                    // サウンドの初期化（初回クリック時）
                     if (!soundInitialized) {
                         await initSound();
                     }
@@ -328,53 +599,153 @@
                     tapCount++;
                     updateScore();
                     
-                    // ピロロン音を再生
                     playPiroron();
                     
-                    // パーティクルエフェクト
                     const rect = this.getBoundingClientRect();
                     const gameAreaRect = document.getElementById('gameArea').getBoundingClientRect();
-                    createParticles(
-                        rect.left - gameAreaRect.left + 30,
-                        rect.top - gameAreaRect.top + 30
-                    );
+                    const clickX = rect.left - gameAreaRect.left + 40;
+                    const clickY = rect.top - gameAreaRect.top + 40;
                     
-                    // 自動的に新しい位置に青い丸として再配置（1秒後）
+                    // 衝撃波を作成
+                    createShockwave(clickX, clickY);
+                    
+                    // 物理的な衝撃波を適用
+                    applyShockwaveForce(clickX, clickY);
+                    
+                    // パーティクルエフェクト
+                    createEffects(clickX, clickY);
+                    
                     setTimeout(() => {
-                        const newPos = getRandomPosition();
-                        this.style.left = newPos.x + 'px';
-                        this.style.top = newPos.y + 'px';
                         this.classList.remove('red');
                         this.classList.add('blue');
                     }, 1000);
                 }
             });
             
-            return circle;
+            return creature;
         }
 
         function updateScore() {
             document.getElementById('score').textContent = `タップ数: ${tapCount}`;
         }
 
-        function initGame() {
+        // 物理演算の更新
+        function updatePhysics() {
             const gameArea = document.getElementById('gameArea');
-            const ballCount = parseInt(document.getElementById('ballCount').value);
+            const maxX = gameArea.clientWidth - 80;
+            const maxY = gameArea.clientHeight - 80;
+            const repulsionStrength = 3000;
+            const damping = 0.92;
+            const minDistance = 100;
+
+            for (let i = 0; i < creatures.length; i++) {
+                const creature1 = creatures[i];
+                const x1 = parseFloat(creature1.style.left);
+                const y1 = parseFloat(creature1.style.top);
+
+                // 他のクリーチャーとの反発
+                for (let j = i + 1; j < creatures.length; j++) {
+                    const creature2 = creatures[j];
+                    const x2 = parseFloat(creature2.style.left);
+                    const y2 = parseFloat(creature2.style.top);
+
+                    const dx = x2 - x1;
+                    const dy = y2 - y1;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < minDistance && distance > 0) {
+                        const force = repulsionStrength / (distance * distance);
+                        const fx = (dx / distance) * force;
+                        const fy = (dy / distance) * force;
+
+                        velocities[i].vx -= fx / 100;
+                        velocities[i].vy -= fy / 100;
+                        velocities[j].vx += fx / 100;
+                        velocities[j].vy += fy / 100;
+                    }
+                }
+
+                // 速度を適用
+                velocities[i].vx *= damping;
+                velocities[i].vy *= damping;
+
+                let newX = x1 + velocities[i].vx;
+                let newY = y1 + velocities[i].vy;
+
+                // 境界チェック（バウンス効果）
+                if (newX < 0) {
+                    newX = 0;
+                    velocities[i].vx = Math.abs(velocities[i].vx) * 0.7;
+                }
+                if (newX > maxX) {
+                    newX = maxX;
+                    velocities[i].vx = -Math.abs(velocities[i].vx) * 0.7;
+                }
+                if (newY < 0) {
+                    newY = 0;
+                    velocities[i].vy = Math.abs(velocities[i].vy) * 0.7;
+                }
+                if (newY > maxY) {
+                    newY = maxY;
+                    velocities[i].vy = -Math.abs(velocities[i].vy) * 0.7;
+                }
+
+                creature1.style.left = newX + 'px';
+                creature1.style.top = newY + 'px';
+            }
+
+            animationId = requestAnimationFrame(updatePhysics);
+        }
+
+        // ゲームエリアのクリックで衝撃波を発生
+        document.addEventListener('DOMContentLoaded', function() {
+            const gameArea = document.getElementById('gameArea');
             
-            // 既存の丸を削除
-            circles.forEach(circle => {
-                if (circle.parentNode) {
-                    circle.parentNode.removeChild(circle);
+            gameArea.addEventListener('click', function(e) {
+                if (e.target === gameArea || e.target === document.querySelector('.score')) {
+                    const rect = gameArea.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+                    
+                    // 衝撃波を作成
+                    createShockwave(clickX, clickY);
+                    
+                    // 物理的な衝撃波を適用
+                    applyShockwaveForce(clickX, clickY);
+                    
+                    // エフェクト
+                    createEffects(clickX, clickY);
                 }
             });
-            circles = [];
+        });
+
+        function initGame() {
+            const gameArea = document.getElementById('gameArea');
+            const creatureCount = parseInt(document.getElementById('ballCount').value);
             
-            // 新しい丸を作成
-            for (let i = 0; i < ballCount; i++) {
-                const circle = createCircle(i);
-                gameArea.appendChild(circle);
-                circles.push(circle);
+            // アニメーションを停止
+            if (animationId) {
+                cancelAnimationFrame(animationId);
             }
+            
+            // 既存のクリーチャーを削除
+            creatures.forEach(creature => {
+                if (creature.parentNode) {
+                    creature.parentNode.removeChild(creature);
+                }
+            });
+            creatures = [];
+            velocities = [];
+            
+            // 新しいクリーチャーを作成
+            for (let i = 0; i < creatureCount; i++) {
+                const creature = createCreature(i);
+                gameArea.appendChild(creature);
+                creatures.push(creature);
+            }
+            
+            // 物理演算を開始
+            updatePhysics();
         }
 
         function resetGame() {
@@ -383,24 +754,28 @@
             initGame();
         }
 
-        // ボール数が変更されたときの処理
         document.getElementById('ballCount').addEventListener('change', function() {
             initGame();
         });
 
-        // 初期化
         window.addEventListener('load', function() {
             initGame();
         });
 
-        // ウィンドウサイズが変更されたときの処理
-        window.addEventListener('resize', function() {
-            circles.forEach(circle => {
-                const pos = getRandomPosition();
-                circle.style.left = pos.x + 'px';
-                circle.style.top = pos.y + 'px';
-            });
-        });
+        // タッチイベントでのスクロール防止
+        document.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        // ダブルタップでのズーム防止
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(e) {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
     </script>
 </body>
 </html>
