@@ -78,6 +78,19 @@
             transform: translateY(0);
         }
 
+        .sound-toggle {
+            margin-left: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sound-toggle input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
         .game-area {
             position: relative;
             width: 90vw;
@@ -148,7 +161,28 @@
             color: white;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
+
+        .particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFloat 1s ease-out forwards;
+        }
+
+        @keyframes particleFloat {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--x), var(--y)) scale(0);
+                opacity: 0;
+            }
+        }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
 </head>
 <body>
     <div class="control-panel">
@@ -161,6 +195,10 @@
             <option value="5">5個</option>
         </select>
         <button onclick="resetGame()">リセット</button>
+        <div class="sound-toggle">
+            <input type="checkbox" id="soundEnabled" checked>
+            <label for="soundEnabled">🔊 サウンド</label>
+        </div>
     </div>
 
     <div class="game-area" id="gameArea">
@@ -170,6 +208,93 @@
     <script>
         let circles = [];
         let tapCount = 0;
+        let synth;
+        let reverb;
+        let delay;
+        let soundInitialized = false;
+
+        // サウンドの初期化
+        async function initSound() {
+            if (soundInitialized) return;
+            
+            await Tone.start();
+            
+            // リバーブとディレイエフェクトを作成
+            reverb = new Tone.Reverb({
+                decay: 2,
+                wet: 0.3
+            }).toDestination();
+            
+            delay = new Tone.FeedbackDelay({
+                delayTime: "16n",
+                feedback: 0.3,
+                wet: 0.2
+            }).connect(reverb);
+            
+            // シンセサイザーを作成
+            synth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: {
+                    type: "sine"
+                },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.3,
+                    sustain: 0.1,
+                    release: 1.5
+                },
+                volume: -10
+            }).connect(delay);
+            
+            soundInitialized = true;
+        }
+
+        // ピロロン音を再生
+        function playPiroron() {
+            if (!document.getElementById('soundEnabled').checked) return;
+            if (!soundInitialized) return;
+            
+            const notes = [
+                ["C5", "8n"],
+                ["E5", "8n", "+8n"],
+                ["G5", "8n", "+4n"],
+                ["C6", "4n", "+4n+8n"]
+            ];
+            
+            const now = Tone.now();
+            let time = 0;
+            
+            notes.forEach((note, index) => {
+                synth.triggerAttackRelease(note[0], note[1], now + time);
+                time += 0.05;
+            });
+            
+            // 追加の装飾音
+            setTimeout(() => {
+                synth.triggerAttackRelease(["E6", "G6"], "16n", Tone.now());
+            }, 150);
+        }
+
+        // パーティクルエフェクトを作成
+        function createParticles(x, y) {
+            const colors = ['#FFD700', '#FF69B4', '#00CED1', '#FF6347', '#32CD32'];
+            
+            for (let i = 0; i < 8; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                
+                const angle = (Math.PI * 2 * i) / 8;
+                const distance = 50 + Math.random() * 50;
+                particle.style.setProperty('--x', Math.cos(angle) * distance + 'px');
+                particle.style.setProperty('--y', Math.sin(angle) * distance + 'px');
+                
+                document.getElementById('gameArea').appendChild(particle);
+                
+                setTimeout(() => particle.remove(), 1000);
+            }
+        }
 
         function getRandomPosition() {
             const gameArea = document.getElementById('gameArea');
@@ -191,12 +316,28 @@
             circle.style.left = pos.x + 'px';
             circle.style.top = pos.y + 'px';
             
-            circle.addEventListener('click', function() {
+            circle.addEventListener('click', async function(e) {
                 if (this.classList.contains('blue')) {
+                    // サウンドの初期化（初回クリック時）
+                    if (!soundInitialized) {
+                        await initSound();
+                    }
+                    
                     this.classList.remove('blue');
                     this.classList.add('red');
                     tapCount++;
                     updateScore();
+                    
+                    // ピロロン音を再生
+                    playPiroron();
+                    
+                    // パーティクルエフェクト
+                    const rect = this.getBoundingClientRect();
+                    const gameAreaRect = document.getElementById('gameArea').getBoundingClientRect();
+                    createParticles(
+                        rect.left - gameAreaRect.left + 30,
+                        rect.top - gameAreaRect.top + 30
+                    );
                     
                     // 自動的に新しい位置に青い丸として再配置（1秒後）
                     setTimeout(() => {
