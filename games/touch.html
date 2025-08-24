@@ -111,13 +111,14 @@
             border-radius: 50%;
             border: 3px solid;
             pointer-events: none;
-            animation: shockwaveExpand 1.5s ease-out forwards;
+            transform: translate(-50%, -50%);
+            animation: shockwaveExpand 2s ease-out forwards;
         }
 
         @keyframes shockwaveExpand {
             0% {
-                width: 0;
-                height: 0;
+                width: 10px;
+                height: 10px;
                 opacity: 1;
                 border-width: 8px;
             }
@@ -126,8 +127,8 @@
                 border-width: 4px;
             }
             100% {
-                width: 600px;
-                height: 600px;
+                width: 500px;
+                height: 500px;
                 opacity: 0;
                 border-width: 1px;
             }
@@ -141,15 +142,37 @@
         .shockwave.secondary {
             border-color: #4169E1;
             box-shadow: 0 0 40px #4169E1;
-            animation-delay: 0.1s;
-            animation-duration: 1.8s;
+            animation-delay: 0.15s;
+            animation-duration: 2.3s;
         }
 
         .shockwave.tertiary {
             border-color: #FFD700;
             box-shadow: 0 0 30px #FFD700;
-            animation-delay: 0.2s;
-            animation-duration: 2s;
+            animation-delay: 0.3s;
+            animation-duration: 2.6s;
+        }
+
+        .touch-indicator {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.8), transparent);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            animation: touchPulse 0.5s ease-out forwards;
+        }
+
+        @keyframes touchPulse {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+            }
         }
 
         .creature {
@@ -304,7 +327,7 @@
             height: 20px;
             border-radius: 50%;
             pointer-events: none;
-            animation: particleFloat 1s ease-out forwards;
+            animation: particleFloat 1.5s ease-out forwards;
         }
 
         @keyframes particleFloat {
@@ -323,7 +346,7 @@
             color: gold;
             font-size: 20px;
             pointer-events: none;
-            animation: sparkleAnim 1s ease-out forwards;
+            animation: sparkleAnim 1.2s ease-out forwards;
         }
 
         @keyframes sparkleAnim {
@@ -340,9 +363,9 @@
             }
         }
 
-        @keyframes spin {
+        @keyframes slowSpin {
             from { transform: rotate(0deg); }
-            to { transform: rotate(720deg); }
+            to { transform: rotate(360deg); }
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
@@ -451,7 +474,17 @@
             }, 100);
         }
 
-        // 衝撃波エフェクトを作成
+        // タッチ位置インジケーター
+        function createTouchIndicator(x, y) {
+            const indicator = document.createElement('div');
+            indicator.className = 'touch-indicator';
+            indicator.style.left = x + 'px';
+            indicator.style.top = y + 'px';
+            document.getElementById('gameArea').appendChild(indicator);
+            setTimeout(() => indicator.remove(), 500);
+        }
+
+        // 衝撃波エフェクトを作成（正確な位置に）
         function createShockwave(x, y) {
             const waves = ['primary', 'secondary', 'tertiary'];
             
@@ -459,19 +492,19 @@
                 setTimeout(() => {
                     const wave = document.createElement('div');
                     wave.className = `shockwave ${waveClass}`;
-                    wave.style.left = (x - 300) + 'px';
-                    wave.style.top = (y - 300) + 'px';
+                    wave.style.left = x + 'px';
+                    wave.style.top = y + 'px';
                     
                     document.getElementById('gameArea').appendChild(wave);
-                    setTimeout(() => wave.remove(), 2000);
-                }, index * 100);
+                    setTimeout(() => wave.remove(), 2600);
+                }, index * 150);
             });
         }
 
-        // 衝撃波による物理的な影響
+        // 衝撃波による物理的な影響（大幅に遅く）
         function applyShockwaveForce(epicenterX, epicenterY) {
-            const shockwaveStrength = 800;
-            const maxDistance = 400;
+            const shockwaveStrength = 150; // 800から150に減少
+            const maxDistance = 350;
             
             creatures.forEach((creature, index) => {
                 const creatureX = parseFloat(creature.style.left) + 40;
@@ -487,15 +520,15 @@
                     const forceX = (dx / distance) * forceMagnitude;
                     const forceY = (dy / distance) * forceMagnitude;
                     
-                    // ダイナミックな動きのために力を増幅
-                    velocities[index].vx += forceX / 20;
-                    velocities[index].vy += forceY / 20;
+                    // 力を大幅に減少（/20 から /80 に変更）
+                    velocities[index].vx += forceX / 80;
+                    velocities[index].vy += forceY / 80;
                     
-                    // 回転エフェクトを追加
-                    creature.style.animation = 'spin 0.5s ease-out';
+                    // ゆっくり回転エフェクト
+                    creature.style.animation = 'slowSpin 1s ease-out';
                     setTimeout(() => {
                         creature.style.animation = '';
-                    }, 500);
+                    }, 1000);
                 }
             });
         }
@@ -513,12 +546,12 @@
                 particle.style.background = colors[Math.floor(Math.random() * colors.length)];
                 
                 const angle = (Math.PI * 2 * i) / 20;
-                const distance = 80 + Math.random() * 80;
+                const distance = 60 + Math.random() * 60;
                 particle.style.setProperty('--x', Math.cos(angle) * distance + 'px');
                 particle.style.setProperty('--y', Math.sin(angle) * distance + 'px');
                 
                 document.getElementById('gameArea').appendChild(particle);
-                setTimeout(() => particle.remove(), 1000);
+                setTimeout(() => particle.remove(), 1500);
             }
 
             // スパークル
@@ -531,8 +564,32 @@
                 sparkle.style.top = (y - 20 + Math.random() * 40) + 'px';
                 
                 document.getElementById('gameArea').appendChild(sparkle);
-                setTimeout(() => sparkle.remove(), 1000);
+                setTimeout(() => sparkle.remove(), 1200);
             }
+        }
+
+        // タッチイベントの処理
+        function handleTouch(e) {
+            e.preventDefault();
+            const gameArea = document.getElementById('gameArea');
+            const rect = gameArea.getBoundingClientRect();
+            
+            // タッチ座標を取得
+            const touch = e.touches[0] || e.changedTouches[0];
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
+            
+            // タッチ位置を表示
+            createTouchIndicator(touchX, touchY);
+            
+            // 衝撃波を作成（正確な位置に）
+            createShockwave(touchX, touchY);
+            
+            // 物理的な衝撃波を適用
+            applyShockwaveForce(touchX, touchY);
+            
+            // エフェクト
+            createEffects(touchX, touchY);
         }
 
         function getRandomPosition() {
@@ -586,6 +643,45 @@
             // 速度の初期化
             velocities[index] = { vx: 0, vy: 0 };
             
+            // タッチイベントでクリーチャーをタップ
+            creature.addEventListener('touchstart', async function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                if (this.classList.contains('blue')) {
+                    if (!soundInitialized) {
+                        await initSound();
+                    }
+                    
+                    this.classList.remove('blue');
+                    this.classList.add('red');
+                    tapCount++;
+                    updateScore();
+                    
+                    playPiroron();
+                    
+                    const rect = this.getBoundingClientRect();
+                    const gameAreaRect = document.getElementById('gameArea').getBoundingClientRect();
+                    const creatureX = rect.left - gameAreaRect.left + 40;
+                    const creatureY = rect.top - gameAreaRect.top + 40;
+                    
+                    // 衝撃波を作成
+                    createShockwave(creatureX, creatureY);
+                    
+                    // 物理的な衝撃波を適用
+                    applyShockwaveForce(creatureX, creatureY);
+                    
+                    // パーティクルエフェクト
+                    createEffects(creatureX, creatureY);
+                    
+                    setTimeout(() => {
+                        this.classList.remove('red');
+                        this.classList.add('blue');
+                    }, 1000);
+                }
+            });
+            
+            // マウスイベントも残す（デスクトップ用）
             creature.addEventListener('click', async function(e) {
                 e.stopPropagation();
                 
@@ -603,17 +699,12 @@
                     
                     const rect = this.getBoundingClientRect();
                     const gameAreaRect = document.getElementById('gameArea').getBoundingClientRect();
-                    const clickX = rect.left - gameAreaRect.left + 40;
-                    const clickY = rect.top - gameAreaRect.top + 40;
+                    const creatureX = rect.left - gameAreaRect.left + 40;
+                    const creatureY = rect.top - gameAreaRect.top + 40;
                     
-                    // 衝撃波を作成
-                    createShockwave(clickX, clickY);
-                    
-                    // 物理的な衝撃波を適用
-                    applyShockwaveForce(clickX, clickY);
-                    
-                    // パーティクルエフェクト
-                    createEffects(clickX, clickY);
+                    createShockwave(creatureX, creatureY);
+                    applyShockwaveForce(creatureX, creatureY);
+                    createEffects(creatureX, creatureY);
                     
                     setTimeout(() => {
                         this.classList.remove('red');
@@ -629,13 +720,13 @@
             document.getElementById('score').textContent = `タップ数: ${tapCount}`;
         }
 
-        // 物理演算の更新
+        // 物理演算の更新（よりゆっくり）
         function updatePhysics() {
             const gameArea = document.getElementById('gameArea');
             const maxX = gameArea.clientWidth - 80;
             const maxY = gameArea.clientHeight - 80;
-            const repulsionStrength = 3000;
-            const damping = 0.92;
+            const repulsionStrength = 1500; // 3000から1500に減少
+            const damping = 0.96; // 0.92から0.96に増加（減速を早める）
             const minDistance = 100;
 
             for (let i = 0; i < creatures.length; i++) {
@@ -658,10 +749,10 @@
                         const fx = (dx / distance) * force;
                         const fy = (dy / distance) * force;
 
-                        velocities[i].vx -= fx / 100;
-                        velocities[i].vy -= fy / 100;
-                        velocities[j].vx += fx / 100;
-                        velocities[j].vy += fy / 100;
+                        velocities[i].vx -= fx / 150; // 100から150に変更
+                        velocities[i].vy -= fy / 150;
+                        velocities[j].vx += fx / 150;
+                        velocities[j].vy += fy / 150;
                     }
                 }
 
@@ -675,19 +766,19 @@
                 // 境界チェック（バウンス効果）
                 if (newX < 0) {
                     newX = 0;
-                    velocities[i].vx = Math.abs(velocities[i].vx) * 0.7;
+                    velocities[i].vx = Math.abs(velocities[i].vx) * 0.5;
                 }
                 if (newX > maxX) {
                     newX = maxX;
-                    velocities[i].vx = -Math.abs(velocities[i].vx) * 0.7;
+                    velocities[i].vx = -Math.abs(velocities[i].vx) * 0.5;
                 }
                 if (newY < 0) {
                     newY = 0;
-                    velocities[i].vy = Math.abs(velocities[i].vy) * 0.7;
+                    velocities[i].vy = Math.abs(velocities[i].vy) * 0.5;
                 }
                 if (newY > maxY) {
                     newY = maxY;
-                    velocities[i].vy = -Math.abs(velocities[i].vy) * 0.7;
+                    velocities[i].vy = -Math.abs(velocities[i].vy) * 0.5;
                 }
 
                 creature1.style.left = newX + 'px';
@@ -697,23 +788,23 @@
             animationId = requestAnimationFrame(updatePhysics);
         }
 
-        // ゲームエリアのクリックで衝撃波を発生
+        // ゲームエリアのタッチイベント
         document.addEventListener('DOMContentLoaded', function() {
             const gameArea = document.getElementById('gameArea');
             
+            // タッチイベント（モバイル用）
+            gameArea.addEventListener('touchstart', handleTouch);
+            
+            // マウスイベント（デスクトップ用）
             gameArea.addEventListener('click', function(e) {
                 if (e.target === gameArea || e.target === document.querySelector('.score')) {
                     const rect = gameArea.getBoundingClientRect();
                     const clickX = e.clientX - rect.left;
                     const clickY = e.clientY - rect.top;
                     
-                    // 衝撃波を作成
+                    createTouchIndicator(clickX, clickY);
                     createShockwave(clickX, clickY);
-                    
-                    // 物理的な衝撃波を適用
                     applyShockwaveForce(clickX, clickY);
-                    
-                    // エフェクト
                     createEffects(clickX, clickY);
                 }
             });
